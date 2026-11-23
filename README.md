@@ -25,7 +25,7 @@ Pensée pour une table de marque en bord de terrain : un téléphone ou un ordin
 - **Historique** : correction ou suppression d'un score saisi par erreur.
 - **Mode écran** : terrains et classement en grand, pour une télé ou un vidéoprojecteur.
 - **Hors ligne** : une fois ouverte, l'appli fonctionne sans réseau et peut s'installer sur l'écran d'accueil.
-- **Test** : 36 joueurs fictifs et des scores simulés pour faire un tournoi blanc en deux minutes.
+- **Test** : 36 joueurs fictifs, et un bouton « Scores aléatoires (test) » sur la page Terrains qui remplit les scores vides des matchs en cours ; on les valide ensuite avec le bouton 3, comme en vrai.
 
 ## Utilisation
 
