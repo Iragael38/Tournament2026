@@ -8,9 +8,13 @@ Pensée pour une table de marque en bord de terrain : un téléphone ou un ordin
 
 ## Ce que fait l'appli
 
-- **Terrains** : dès qu'un score est validé, le terrain est relancé avec les 4 joueurs suivants. Un chrono tourne sur chaque terrain.
+- **Terrains, en trois étapes** :
+  1. *Remplir* : l'appli propose les équipes sur les terrains libres (un terrain ou les 6 d'un coup).
+  2. *Valider les équipes* : on ajuste si besoin, puis on valide terrain par terrain ou tous d'un coup. Le chrono démarre.
+  3. *Valider les scores* : on saisit les scores au fil des fins de match, puis un seul bouton valide tous les scores saisis. Les terrains sans score sont laissés en cours.
+- **Ajuster une proposition** : chaque joueur d'un terrain proposé se remplace par un joueur existant (en attente, du même terrain ou d'un autre terrain à valider) ; les deux joueurs échangent leur place.
 - **Tirage équitable** : passent d'abord ceux qui ont le moins joué, puis ceux qui attendent depuis le plus longtemps. L'appli évite de reformer les mêmes paires et, si les niveaux sont renseignés, équilibre les équipes.
-- **Joueurs** : ajout des retardataires en cours de tournoi, joueur « absent » (blessure, départ) sans perdre ses résultats, niveau facultatif.
+- **Joueurs** : ajout des retardataires en cours de tournoi, correction d'un nom, joueur « absent » (blessure, départ) sans perdre ses résultats, niveau facultatif.
 - **Classement individuel** : pourcentage de victoires, puis écart de points moyen par match. Il reste juste même si tout le monde n'a pas joué le même nombre de matchs.
 - **Historique** : correction ou suppression d'un score saisi par erreur.
 - **Mode écran** : terrains et classement en grand, pour une télé ou un vidéoprojecteur.
@@ -22,7 +26,7 @@ Pensée pour une table de marque en bord de terrain : un téléphone ou un ordin
 1. Ouvrir l'appli dans Chrome (Android) ou n'importe quel navigateur récent.
 2. Onglet **Joueurs** : coller la liste des inscrits, un nom par ligne.
 3. Onglet **Réglages** : vérifier le nombre de terrains (6 par défaut) et les points (21).
-4. Onglet **Terrains** : les matchs se lancent. Saisir les deux scores puis « Valider le score ».
+4. Onglet **Terrains** : utiliser les trois boutons en bas d'écran, dans l'ordre : **1 Remplir les terrains**, **2 Valider les équipes**, **3 Valider les scores saisis**.
 
 **Installer sur Android** : dans Chrome, menu ⋮ puis « Ajouter à l'écran d'accueil ».
 
