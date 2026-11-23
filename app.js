@@ -161,7 +161,7 @@ function grid(st,tv){
 function vCourts(st){
   const q=queue(st),nf=freeCourts().length,np=props().length,nl=live().length;
   if(!S.players.length)return `<div class="empty"><h2>Aucun joueur pour l'instant</h2><p class="mut">Ajoutez les inscrits dans l'onglet Joueurs, ou testez avec des joueurs fictifs.</p><button class="pri" data-act="demo">Charger 36 joueurs fictifs</button></div>`;
-  const bar=`<div class="bar"><label class="sw"><input type="checkbox" id="auto" ${S.auto?'checked':''}> Proposer le match suivant dès qu'un terrain se libère</label><span class="sp"></span><button data-act="tv">Mode écran</button><button data-act="qr">QR code</button></div>`;
+  const bar=`<div class="bar"><label class="sw"><input type="checkbox" id="auto" ${S.auto?'checked':''}> Proposer le match suivant dès qu'un terrain se libère</label><span class="sp"></span><button data-act="tv">Mode écran</button><button data-act="qr">QR code</button><button class="ghost" data-act="rand" ${live().length?'':'disabled'} title="Pour tester l'appli : remplit les scores vides des matchs en cours, sans les valider">Scores aléatoires (test)</button></div>`;
   const ms=[];for(let c=1;c<=S.courts;c++)ms.push(modeOf(c));
   const all=ms.every(x=>x==='mixte')?'mixte':ms.every(x=>x==='libre')?'libre':'';
   const modebar=`<div class="bar modebar"><span>Type de match pour tous les terrains :</span><div class="chips seg" role="group">
@@ -365,6 +365,11 @@ document.addEventListener('click',e=>{
     case 'barm':barM=b.dataset.v;render();break;
     case 'barg':barG=b.dataset.v;render();break;
     case 'barord':barAsc=!barAsc;render();break;
+    // Test : remplit au hasard les scores vides des matchs en cours ; on les valide ensuite avec le bouton 3.
+    case 'rand':{let n=0;live().forEach(x=>{const ia=$('#sa-'+x.id),ib=$('#sb-'+x.id);if(!ia||!ib||ia.value||ib.value)return;
+      const w=S.target,l=Math.floor(Math.random()*(w-1)),win=Math.random()<.5;ia.value=win?w:l;ib.value=win?l:w;n++});
+      bulk=n?`${n} score${n>1?'s':''} rempli${n>1?'s':''} au hasard : touchez « Valider les scores saisis ».`:'Aucun score vide à remplir.';
+      render();break;}
     case 'qrclose':$('#qrbox').hidden=true;break;
     case 'reset':twoStep(b,'Vraiment tout effacer ?',()=>{S=fresh();tab='courts';commit()});break;
   }
