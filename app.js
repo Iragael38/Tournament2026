@@ -139,7 +139,7 @@ function render(){
   $('#kpi').innerHTML=`<b>${done}</b> joués · <b>${lm}</b> en cours · <b>${q}</b> en attente`;
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
   const M=$('#main');
-  if(document.body.classList.contains('tv'))M.innerHTML=`${grid(st)}<div><h2>Classement</h2>${vRank(st,15)}</div>`;
+  if(document.body.classList.contains('tv'))M.innerHTML=`${grid(st)}<div><div class="tvhead"><img src="logo.svg" alt="Logo Badadonf"><b>Badadonf<br>${esc(S.name)}</b></div><h2>Classement</h2>${vRank(st,15)}</div>`;
   else M.innerHTML=tab==='courts'?vCourts(st):tab==='players'?vPlayers(st):tab==='rank'?`<h2>Classement individuel</h2>${vRank(st)}`:tab==='matches'?vMatches():vSettings();
   for(const id in keep){const i=document.getElementById(id);if(i)i.value=keep[id]}
 }
