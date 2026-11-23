@@ -1,11 +1,11 @@
 // Service worker : garde l'appli en mémoire pour qu'elle marche sans réseau.
-// Après une modification de l'appli, augmentez VERSION pour forcer la mise à jour.
-const VERSION = 'tournoi-v2';
+// Après une modification de l'appli, augmentez VERSION ici et le ?v= de style.css et app.js dans index.html.
+const VERSION = 'tournoi-v3';
 const FILES = [
   './',
   './index.html',
-  './style.css',
-  './app.js',
+  './style.css?v=3',
+  './app.js?v=3',
   './logo.svg',
   './vendor/qrcode.js',
   './manifest.webmanifest',
@@ -30,7 +30,7 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: 'no-cache' }) // contourne le cache du navigateur pour toujours avoir la dernière version
       .then(res => {
         const copy = res.clone();
         caches.open(VERSION).then(c => c.put(e.request, copy));
