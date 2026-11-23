@@ -12,7 +12,7 @@ h1,h2,.cond{font-family:var(--cond);font-weight:700;line-height:1.05}
 h1{font-size:clamp(28px,5vw,40px);margin:0;text-wrap:balance}
 h2{font-size:24px;margin:0 0 12px}
 header{background:var(--court2);color:#fff;padding:18px max(4vw,14px) 0}
-header .row{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline;justify-content:space-between}
+header .row{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between}
 .kpi{color:#b9c5cd;font-size:15px}.kpi b{color:var(--acc);font-family:var(--cond);font-size:20px}
 nav{display:flex;gap:4px;overflow-x:auto;margin-top:12px}
 nav button{flex:none;background:none;border:0;color:#b9c5cd;font:600 16px var(--body);padding:12px 14px;min-height:44px;border-bottom:3px solid transparent;cursor:pointer}

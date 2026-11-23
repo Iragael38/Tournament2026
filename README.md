@@ -38,7 +38,7 @@ Pensée pour une table de marque en bord de terrain : un téléphone ou un ordin
 2. Source : « Deploy from a branch », branche `main`, dossier `/ (root)`, puis **Save**.
 3. Après une minute, l'appli est en ligne à l'adresse `https://<votre-compte>.github.io/<nom-du-depot>/`.
 
-Chaque modification envoyée sur `main` met l'appli à jour. Pensez à augmenter `VERSION` dans `sw.js` pour que les téléphones récupèrent la nouvelle version.
+Chaque modification envoyée sur `main` met l'appli à jour. Pensez à augmenter `VERSION` dans `sw.js` et le numéro `?v=` de `style.css` et `app.js` dans `index.html`, pour que les téléphones récupèrent la nouvelle version.
 
 ## Organisation du code
 
