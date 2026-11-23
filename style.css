@@ -114,8 +114,8 @@ body.tv .names{font-size:24px}
   nav{-webkit-mask-image:linear-gradient(90deg,#000 85%,transparent);mask-image:linear-gradient(90deg,#000 85%,transparent)}
   .actions{gap:6px}.actions button{font-size:14px;padding:6px}}
 /* Statistiques et graphiques du classement */
-.stats{margin-top:32px}
 .stats h2{margin-top:28px}
+.stats h2:first-child{margin-top:0}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px}
 .tile{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;display:grid;gap:2px}
 .tile span{font-size:14px;color:var(--mut)}
