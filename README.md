@@ -1,6 +1,8 @@
-# Tournoi de badminton à la mêlée
+<img src="logo.svg" alt="Logo Badadonf" width="120">
 
-Une petite appli web pour gérer un tournoi de badminton **en double, sans équipes fixes** : à chaque match, les paires sont tirées au sort parmi les joueurs présents, et chacun accumule ses propres résultats.
+# Badadonf — tournoi de badminton à la mêlée
+
+Une petite appli web de l'association **Badadonf** pour gérer un tournoi de badminton **en double, sans équipes fixes** : à chaque match, les paires sont tirées au sort parmi les joueurs présents, et chacun accumule ses propres résultats.
 
 Pensée pour une table de marque en bord de terrain : un téléphone ou un ordinateur, pas de compte, pas d'Internet nécessaire.
 
@@ -46,7 +48,8 @@ style.css             l'apparence
 app.js                toute la logique (données, tirage, classement, affichage)
 sw.js                 service worker : garde l'appli en mémoire pour le hors ligne
 manifest.webmanifest  nom, icône et couleurs pour l'installation
-icons/                icônes de l'écran d'accueil
+logo.svg              logo de l'association
+icons/                icônes de l'écran d'accueil (tirées du logo)
 vendor/qrcode.js      génération du QR code (Kazuhiko Arase, licence MIT)
 ```
 
@@ -61,4 +64,6 @@ Pour tester en local : ouvrir `index.html` dans un navigateur suffit (le mode ho
 
 ## Licence
 
-Code sous licence MIT : voir [LICENSE](LICENSE).
+Le code est sous licence MIT : voir [LICENSE](LICENSE).
+
+Le logo (`logo.svg` et les images du dossier `icons/`) appartient à l'association Badadonf. Il n'est pas couvert par la licence MIT et ne peut pas être réutilisé sans son accord.
