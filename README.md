@@ -14,8 +14,13 @@ Pensée pour une table de marque en bord de terrain : un téléphone ou un ordin
   3. *Valider les scores* : on saisit les scores au fil des fins de match, puis un seul bouton valide tous les scores saisis. Les terrains sans score sont laissés en cours.
 - **Ajuster une proposition** : chaque joueur d'un terrain proposé se remplace par un joueur existant (en attente, du même terrain ou d'un autre terrain à valider) ; les deux joueurs échangent leur place.
 - **Tirage équitable** : passent d'abord ceux qui ont le moins joué, puis ceux qui attendent depuis le plus longtemps. L'appli évite de reformer les mêmes paires et, si les niveaux sont renseignés, équilibre les équipes.
-- **Joueurs** : ajout des retardataires en cours de tournoi, correction d'un nom, joueur « absent » (blessure, départ) sans perdre ses résultats, niveau facultatif.
+- **Joueurs** : ajout des retardataires en cours de tournoi, correction d'un nom, genre (pour les podiums), joueur « absent » (blessure, départ) sans perdre ses résultats, niveau facultatif.
 - **Classement individuel** : pourcentage de victoires, puis écart de points moyen par match. Il reste juste même si tout le monde n'a pas joué le même nombre de matchs.
+  Le tableau indique aussi le temps de jeu total et la durée moyenne des matchs de chaque joueur (de la validation des équipes à celle du score).
+- **Statistiques** (bas de l'onglet Classement) :
+  - le tournoi en chiffres : matchs joués, durée moyenne, temps de jeu cumulé, matchs serrés, plus gros écart ;
+  - podiums général, femmes et hommes au choix : % de victoires, écart de points cumulé, plus longue série de victoires, points par match, temps de jeu. Pour les moyennes, seuls les joueurs ayant joué au moins le nombre médian de matchs sont classés ;
+  - graphique en barres de tous les joueurs, du plus petit au plus grand (ou l'inverse), filtrable par genre : % de victoires, écart cumulé, points marqués, points par match, matchs joués, temps de jeu, durée moyenne.
 - **Historique** : correction ou suppression d'un score saisi par erreur.
 - **Mode écran** : terrains et classement en grand, pour une télé ou un vidéoprojecteur.
 - **Hors ligne** : une fois ouverte, l'appli fonctionne sans réseau et peut s'installer sur l'écran d'accueil.
@@ -24,7 +29,7 @@ Pensée pour une table de marque en bord de terrain : un téléphone ou un ordin
 ## Utilisation
 
 1. Ouvrir l'appli dans Chrome (Android) ou n'importe quel navigateur récent.
-2. Onglet **Joueurs** : coller la liste des inscrits, un nom par ligne.
+2. Onglet **Joueurs** : coller la liste des inscrits, un nom par ligne, suivi si besoin du genre (`Camille, F` ou `Léo, H`).
 3. Onglet **Réglages** : vérifier le nombre de terrains (6 par défaut) et les points (21).
 4. Onglet **Terrains** : utiliser les trois boutons en bas d'écran, dans l'ordre : **1 Remplir les terrains**, **2 Valider les équipes**, **3 Valider les scores saisis**.
 

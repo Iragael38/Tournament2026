@@ -4,7 +4,7 @@
    COULEURS et POLICES : celles du logo Badadonf, bleu nuit, sable et blanc ; polices condensées du système
    MISE EN PAGE : barre d'onglets, grille de terrains, file d'attente dessous ; tout s'empile sur téléphone */
 /* Polices du système : aucune connexion extérieure, l'appli marche hors ligne. */
-:root{--cond:"Roboto Condensed","sans-serif-condensed","Arial Narrow","Helvetica Neue",system-ui,sans-serif;--body:system-ui,-apple-system,Roboto,"Segoe UI",Arial,sans-serif;color-scheme:light dark;--bg:light-dark(#f2efe8,#07141d);--ink:light-dark(#0b1f2c,#ece8df);--mut:light-dark(#56636d,#9eabb4);--card:light-dark(#fff,#0f2636);--bd:light-dark(#ddd7ca,#1f3a4c);--court:#15344b;--court2:#0b1f2c;--acc:#d8d2c4;--mark:light-dark(#0b1f2c,#d8d2c4);--pri:light-dark(#0b1f2c,#d8d2c4);--prii:light-dark(#fff,#0b1f2c);--bad:#c8433b}
+:root{--pos:light-dark(#2a6fb0,#3d86c9);--neg:light-dark(#c4612f,#d06a36);--cond:"Roboto Condensed","sans-serif-condensed","Arial Narrow","Helvetica Neue",system-ui,sans-serif;--body:system-ui,-apple-system,Roboto,"Segoe UI",Arial,sans-serif;color-scheme:light dark;--bg:light-dark(#f2efe8,#07141d);--ink:light-dark(#0b1f2c,#ece8df);--mut:light-dark(#56636d,#9eabb4);--card:light-dark(#fff,#0f2636);--bd:light-dark(#ddd7ca,#1f3a4c);--court:#15344b;--court2:#0b1f2c;--acc:#d8d2c4;--mark:light-dark(#0b1f2c,#d8d2c4);--pri:light-dark(#0b1f2c,#d8d2c4);--prii:light-dark(#fff,#0b1f2c);--bad:#c8433b}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 var(--body);overflow-x:clip}
@@ -63,9 +63,9 @@ th:nth-child(2),td:nth-child(2){text-align:left;white-space:normal}
 td.rk{font:700 20px var(--cond);color:var(--mut)}
 tr.top td.rk{color:var(--mark)}
 .plist{display:grid;gap:8px}
-.prow{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;padding:8px 10px;background:var(--card);border:1px solid var(--bd);border-radius:10px}
+.prow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 10px;background:var(--card);border:1px solid var(--bd);border-radius:10px}
 .prow.off{opacity:.55}
-.prow .n{font-weight:600}.prow .n small{color:var(--mut);font-weight:400;margin-left:6px}
+.prow .n{font-weight:600;flex:1 1 200px}.prow .n small{color:var(--mut);font-weight:400;margin-left:6px}
 .mrow{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--bd)}
 .mrow .t{font:700 18px var(--cond);color:var(--mut);width:34px}
 .mrow .s{font:700 22px var(--cond);font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -83,7 +83,7 @@ body.tv #tvx{display:block;position:fixed;top:10px;right:10px;z-index:5}
 body.tv .sc{background:transparent;color:#fff;pointer-events:none}
 body.tv .names{font-size:24px}
 @media(max-width:800px){body.tv main{grid-template-columns:1fr}}
-@media(max-width:600px){.prow{grid-template-columns:1fr auto;}.prow select{grid-column:1}table{font-size:14px}th,td{padding:8px 5px}}
+@media(max-width:600px){.prow .n{flex-basis:100%}.prow select{flex:1}table{font-size:14px}th,td{padding:8px 5px}}
 @media(prefers-reduced-motion:no-preference){.court.flash{animation:fl .8s}@keyframes fl{from{box-shadow:inset 0 0 0 6px var(--acc)}}}
 .modal{position:fixed;inset:0;background:#0009;display:grid;place-items:center;padding:16px;z-index:10}
 .modal[hidden]{display:none}
@@ -113,3 +113,39 @@ body.tv .names{font-size:24px}
 @media(max-width:600px){header .row{gap:2px 12px}header .kpi{display:none}header h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.logo{max-width:96px;max-height:96px}
   nav{-webkit-mask-image:linear-gradient(90deg,#000 85%,transparent);mask-image:linear-gradient(90deg,#000 85%,transparent)}
   .actions{gap:6px}.actions button{font-size:14px;padding:6px}}
+/* Statistiques et graphiques du classement */
+.stats{margin-top:32px}
+.stats h2{margin-top:28px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:10px}
+.tile{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;display:grid;gap:2px}
+.tile span{font-size:14px;color:var(--mut)}
+.tile b{font:700 30px/1.1 var(--cond);font-variant-numeric:tabular-nums}
+.tile small{font-size:13px;color:var(--mut)}
+.chips.seg{margin-bottom:12px}
+.chip{cursor:pointer;font:500 15px var(--body);min-height:40px;color:var(--ink)}
+.chip.on{background:var(--mark);color:var(--bg);border-color:var(--mark)}
+.pods{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px}
+.podium{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px 14px 0;overflow:hidden}
+.podium h3{margin:0 0 10px;font:700 20px var(--cond)}
+.podium .mut{padding-bottom:14px}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;align-items:end}
+.step{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0}
+.step .who{font-weight:600;font-size:15px;line-height:1.2;overflow-wrap:anywhere}
+.step .val{font-size:13px;color:var(--mut);margin:2px 0 6px;white-space:nowrap}
+.step .block{width:100%;background:var(--court);color:var(--acc);border-radius:6px 6px 0 0;display:grid;place-items:start center;padding-top:6px}
+.step .block b{font:700 26px var(--cond)}
+.step.s1 .block{height:96px;background:var(--acc);color:#0b1f2c}
+.step.s2 .block{height:68px}
+.step.s3 .block{height:48px}
+.bars{display:grid;gap:4px}
+.brow{display:grid;grid-template-columns:minmax(5.5em,9em) minmax(0,1fr) minmax(4.5em,6.5em);gap:10px;align-items:center;min-height:28px}
+.brow.low{opacity:.45}
+.bn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px}
+.bt{position:relative;height:16px}
+.bt i{position:absolute;top:0;bottom:0;left:0;background:var(--pos);border-radius:0 4px 4px 0;min-width:2px}
+.bt i.zero{display:none}
+.bt.dv::before{content:"";position:absolute;left:50%;top:-4px;bottom:-4px;width:1px;background:var(--mut)}
+.bt.dv i.neg{left:auto;background:var(--neg);border-radius:4px 0 0 4px}
+.bv{font-size:14px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--ink)}
+.note{font-size:14px;margin-top:8px}
+@media(max-width:600px){.brow{grid-template-columns:5.2em minmax(0,1fr) 4.6em;gap:6px}.bn{font-size:14px}.bv{font-size:13px}}
