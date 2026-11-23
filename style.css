@@ -149,3 +149,11 @@ body.tv .names{font-size:24px}
 .bv{font-size:14px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--ink)}
 .note{font-size:14px;margin-top:8px}
 @media(max-width:600px){.brow{grid-template-columns:5.2em minmax(0,1fr) 4.6em;gap:6px}.bn{font-size:14px}.bv{font-size:13px}}
+/* Type de match par terrain */
+.court .ch{flex-wrap:wrap;gap:6px}
+.court .hr{display:flex;gap:6px;align-items:center}
+.mode{font:600 13px var(--body);border-radius:99px;padding:3px 10px;min-height:0;border:1px solid #d8d2c4aa;background:transparent;color:#fff;white-space:nowrap}
+button.mode{min-height:32px;padding:4px 12px;cursor:pointer}
+.mode.mx,span.mode{background:#d8d2c42a}
+.court.free .ch{width:100%;align-self:stretch;padding:0 2px}
+.modebar{gap:8px 12px}.modebar .chips.seg{margin:0}.modebar .mut{font-size:14px;flex-basis:100%}

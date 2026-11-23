@@ -12,6 +12,7 @@ Pensée pour une table de marque en bord de terrain : un téléphone ou un ordin
   1. *Remplir* : l'appli propose les équipes sur les terrains libres (un terrain ou les 6 d'un coup).
   2. *Valider les équipes* : on ajuste si besoin, puis on valide terrain par terrain ou tous d'un coup. Le chrono démarre.
   3. *Valider les scores* : on saisit les scores au fil des fins de match, puis un seul bouton valide tous les scores saisis. Les terrains sans score sont laissés en cours.
+- **Type de match** : *mélange libre* (sans critère) ou *mixte* (chaque équipe = une femme et un homme). Un bouton l'applique à tous les terrains, et un bouton en haut de chaque terrain le change pour ce terrain seulement. Le mixte utilise le genre renseigné dans l'onglet Joueurs.
 - **Ajuster une proposition** : chaque joueur d'un terrain proposé se remplace par un joueur existant (en attente, du même terrain ou d'un autre terrain à valider) ; les deux joueurs échangent leur place.
 - **Tirage équitable** : passent d'abord ceux qui ont le moins joué, puis ceux qui attendent depuis le plus longtemps. L'appli évite de reformer les mêmes paires et, si les niveaux sont renseignés, équilibre les équipes.
 - **Joueurs** : ajout des retardataires en cours de tournoi, correction d'un nom, genre (pour les podiums), joueur « absent » (blessure, départ) sans perdre ses résultats, niveau facultatif.
