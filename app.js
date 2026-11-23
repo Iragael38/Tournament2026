@@ -42,16 +42,31 @@ function queue(st){
   return S.players.filter(p=>p.on&&!busy.has(p.id)).sort((x,y)=>(st[x.id].j-st[y.id].j)||(st[x.id].last-st[y.id].last)||(x.id-y.id));
 }
 const SPLITS=[[[0,1],[2,3]],[[0,2],[1,3]],[[0,3],[1,2]]];
-function pick(){
+// Type de match d'un terrain : 'libre' (mélange sans critère) ou 'mixte' (chaque équipe = une femme + un homme).
+const modeOf=c=>(S.cmode&&S.cmode[c])||'libre';
+const isMixed=m=>[m.a,m.b].every(t=>t.map(i=>P(i)?.g).sort().join('')==='FH');
+// Choisit les 4 joueurs du prochain match et forme les deux équipes.
+// On essaie plusieurs groupes parmi les premiers de la file d'attente et on garde le moins « coûteux » :
+// faire passer quelqu'un avant son tour, rejouer avec le même partenaire ou contre les mêmes adversaires,
+// et un écart de niveau entre les équipes coûtent des points.
+function pick(mode){
   const st=stats(),q=queue(st);
   if(q.length<4)return null;
-  const pool=q.slice(0,Math.min(8,q.length)),n=pool.length,minJ=st[pool[0].id].j;
-  const lv=p=>p.lv||2;
+  const rank=new Map(q.map((p,i)=>[p.id,i])),minJ=st[q[0].id].j,lv=p=>p.lv||2;
+  const groups=[];
+  if(mode==='mixte'){
+    const F=q.filter(p=>p.g==='F').slice(0,6),H=q.filter(p=>p.g==='H').slice(0,6);
+    if(F.length<2||H.length<2)return null;
+    for(let i=0;i<F.length;i++)for(let j=i+1;j<F.length;j++)for(let k=0;k<H.length;k++)for(let l=k+1;l<H.length;l++)
+      groups.push({g:[F[i],H[k],F[j],H[l]],splits:[[[0,1],[2,3]],[[0,3],[2,1]]]});
+  }else{
+    const pool=q.slice(0,8),n=pool.length;
+    for(let a=0;a<n;a++)for(let b=a+1;b<n;b++)for(let c=b+1;c<n;c++)for(let d=c+1;d<n;d++)groups.push({g:[pool[a],pool[b],pool[c],pool[d]],splits:SPLITS});
+  }
   let best=null,bc=Infinity;
-  for(let a=0;a<n;a++)for(let b=a+1;b<n;b++)for(let c=b+1;c<n;c++)for(let d=c+1;d<n;d++){
-    const g=[pool[a],pool[b],pool[c],pool[d]];
-    let base=(a+b+c+d-6)*3+g.reduce((s,p)=>s+(st[p.id].j-minJ)*15,0);
-    for(const [x,y] of SPLITS){
+  for(const {g,splits} of groups){
+    const base=g.reduce((s,p)=>s+rank.get(p.id)*3+(st[p.id].j-minJ)*15,0);
+    for(const [x,y] of splits){
       const A=[g[x[0]],g[x[1]]],B=[g[y[0]],g[y[1]]];
       let cost=base+Math.random()*0.5;
       cost+=(st[A[0].id].part[A[1].id]||0)*12+(st[B[0].id].part[B[1].id]||0)*12;
@@ -64,7 +79,19 @@ function pick(){
 }
 function freeCourts(){const used=new Set(active().map(m=>m.c));const f=[];for(let c=1;c<=S.courts;c++)if(!used.has(c))f.push(c);return f}
 // Propose un match sur le terrain c : les équipes restent modifiables jusqu'à leur validation.
-function launch(c){const r=pick();if(!r)return false;S.matches.push({id:S.seq++,c,a:r.a,b:r.b,st:'prop'});return true}
+let cnotes={}; // messages par terrain libre (ex. pas assez de joueuses pour un match mixte)
+function launch(c){
+  const mode=modeOf(c),r=pick(mode);
+  if(!r){if(mode==='mixte'&&queue(stats()).length>=4)cnotes[c]='Pas assez de femmes et d\'hommes en attente pour un match mixte (genre à renseigner dans Joueurs).';return false}
+  delete cnotes[c];S.matches.push({id:S.seq++,c,a:r.a,b:r.b,st:'prop',mode});return true;
+}
+// Change le type d'un terrain ; un match encore proposé sur ce terrain est retiré puis reproposé.
+function setMode(c,mode){
+  S.cmode=Object.assign({},S.cmode,{[c]:mode});delete cnotes[c];
+  const m=props().find(x=>x.c===c);
+  if(m){S.matches=S.matches.filter(x=>x!==m);return true}
+  return false;
+}
 // Place le joueur id à la position slot (0-1 : équipe 1, 2-3 : équipe 2) du match m.
 // S'il était déjà sur ce terrain ou sur un autre terrain proposé, les deux joueurs échangent leur place.
 function setSlot(m,slot,id){
@@ -83,7 +110,7 @@ function checkScore(sa,sb,force){
   return '';
 }
 function finish(m,sa,sb){Object.assign(m,{sa,sb,st:'done',end:Date.now()});delete notes[m.id]}
-function fill(){let n=0;for(const c of freeCourts()){if(launch(c))n++;else break}return n}
+function fill(){let n=0;for(const c of freeCourts()){if(launch(c))n++}return n}
 function commit(){save();render()}
 
 const fmt=ms=>{const s=Math.max(0,Math.floor(ms/1000));return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
@@ -108,19 +135,21 @@ function grid(st,tv){
   const am=active(),q=queue(st),max=Math.max(S.courts,...am.map(m=>m.c),0);
   let h='';
   for(let c=1;c<=max;c++){
-    const m=am.find(x=>x.c===c),note=m&&notes[m.id]?esc(notes[m.id]):'';
-    if(!m){h+=`<div class="court free"><b class="cond" style="font-size:22px">Terrain ${c}</b><span>Libre</span>${c<=S.courts?`<button class="pri" data-act="launch" data-c="${c}" ${q.length<4?'disabled':''}>Proposer un match</button>`:''}</div>`;continue}
+    const m=am.find(x=>x.c===c),note=m&&notes[m.id]?esc(notes[m.id]):'',md=modeOf(c);
+    const mbtn=tv?`<span class="mode">${md==='mixte'?'Mixte':'Libre'}</span>`:`<button class="mode${md==='mixte'?' mx':''}" data-act="cmode" data-c="${c}" title="Changer le type de match de ce terrain">${md==='mixte'?'Mixte':'Libre'}</button>`;
+    if(!m){h+=`<div class="court free"><div class="ch"><b>Terrain ${c}</b>${c<=S.courts?mbtn:''}</div><span>Libre</span>${c<=S.courts?`<button class="pri" data-act="launch" data-c="${c}" ${q.length<4?'disabled':''}>Proposer un match</button>`:''}${cnotes[c]?`<p class="msg">${esc(cnotes[c])}</p>`:''}</div>`;continue}
     if(m.st==='prop'){
       const side=k=>tv?team(k<2?m.a:m.b):picker(m,k,q,st)+picker(m,k+1,q,st);
-      h+=`<div class="court prop" id="court-${c}"><div class="ch"><b>Terrain ${c}</b><span class="tag">Équipes à valider</span></div>
+      const warn=md==='mixte'&&!isMixed(m)?'Attention : les équipes ne sont plus mixtes.':'';
+      h+=`<div class="court prop" id="court-${c}"><div class="ch"><b>Terrain ${c}</b><span class="hr">${mbtn}<span class="tag">À valider</span></span></div>
         <div class="half solo"><div class="names">${side(0)}</div></div>
         <div class="net"></div>
         <div class="half solo"><div class="names">${side(2)}</div></div>
         <div class="cf"><button class="pri" data-act="teams" data-id="${m.id}">Valider les équipes</button><button class="ghost" data-act="cancel" data-id="${m.id}">Retirer</button></div>
-        <p class="msg">${note}</p></div>`;
+        <p class="msg">${[note,warn].filter(Boolean).join(' ')}</p></div>`;
       continue;
     }
-    h+=`<div class="court" id="court-${c}"><div class="ch"><b>Terrain ${c}</b><span class="el" data-start="${m.start}">${fmt(Date.now()-m.start)}</span></div>
+    h+=`<div class="court" id="court-${c}"><div class="ch"><b>Terrain ${c}</b><span class="hr">${m.mode==='mixte'?'<span class="mode">Mixte</span>':''}<span class="el" data-start="${m.start}">${fmt(Date.now()-m.start)}</span></span></div>
       <div class="half"><div class="names">${team(m.a)}</div><input class="sc" id="sa-${m.id}" inputmode="numeric" pattern="[0-9]*" aria-label="Score équipe 1, terrain ${c}"></div>
       <div class="net"></div>
       <div class="half"><div class="names">${team(m.b)}</div><input class="sc" id="sb-${m.id}" inputmode="numeric" pattern="[0-9]*" aria-label="Score équipe 2, terrain ${c}"></div>
@@ -133,13 +162,19 @@ function vCourts(st){
   const q=queue(st),nf=freeCourts().length,np=props().length,nl=live().length;
   if(!S.players.length)return `<div class="empty"><h2>Aucun joueur pour l'instant</h2><p class="mut">Ajoutez les inscrits dans l'onglet Joueurs, ou testez avec des joueurs fictifs.</p><button class="pri" data-act="demo">Charger 36 joueurs fictifs</button></div>`;
   const bar=`<div class="bar"><label class="sw"><input type="checkbox" id="auto" ${S.auto?'checked':''}> Proposer le match suivant dès qu'un terrain se libère</label><span class="sp"></span><button data-act="tv">Mode écran</button><button data-act="qr">QR code</button></div>`;
+  const ms=[];for(let c=1;c<=S.courts;c++)ms.push(modeOf(c));
+  const all=ms.every(x=>x==='mixte')?'mixte':ms.every(x=>x==='libre')?'libre':'';
+  const modebar=`<div class="bar modebar"><span>Type de match pour tous les terrains :</span><div class="chips seg" role="group">
+    <button class="chip${all==='libre'?' on':''}" data-act="modeall" data-v="libre" aria-pressed="${all==='libre'}">Mélange libre</button>
+    <button class="chip${all==='mixte'?' on':''}" data-act="modeall" data-v="mixte" aria-pressed="${all==='mixte'}">Mixte</button></div>
+    <span class="mut">${all?'':'Types différents selon les terrains. '}Le bouton en haut de chaque terrain le change pour ce terrain seulement.</span></div>`;
   const actions=`<div class="actions">
     <button data-act="fill" ${q.length<4||!nf?'disabled':''}><b>1</b> Remplir les terrains${nf?` (${nf})`:''}</button>
     <button data-act="teamsall" ${np?'':'disabled'}><b>2</b> Valider les équipes${np?` (${np})`:''}</button>
     <button class="pri" data-act="okall" ${nl?'':'disabled'}><b>3</b> Valider les scores saisis</button>
     ${bulk?`<p class="bulk" role="status">${esc(bulk)}</p>`:''}</div>`;
   const qh=q.length?q.map((p,i)=>`<span class="chip${i<4?' next':''}">${esc(p.name)}<i>${st[p.id].j}</i></span>`).join(''):'<span class="mut">Personne en attente.</span>';
-  return bar+grid(st)+actions+`<section class="queue"><h2>En attente (${q.length})</h2><p class="mut" style="margin-top:-6px">Dans l'ordre de passage ; le chiffre indique le nombre de matchs joués. Les 4 premiers sont encadrés.</p><div class="chips">${qh}</div></section>`;
+  return bar+modebar+grid(st)+actions+`<section class="queue"><h2>En attente (${q.length})</h2><p class="mut" style="margin-top:-6px">Dans l'ordre de passage ; le chiffre indique le nombre de matchs joués. Les 4 premiers sont encadrés.</p><div class="chips">${qh}</div></section>`;
 }
 function ranking(st){
   return S.players.map(p=>({p,s:st[p.id]})).sort((x,y)=>{
@@ -282,6 +317,8 @@ document.addEventListener('click',e=>{
   const id=+b.dataset.id,m=S.matches.find(x=>x.id===id);
   switch(b.dataset.act){
     case 'launch':bulk='';launch(+b.dataset.c);commit();break;
+    case 'cmode':{const c=+b.dataset.c,nx=modeOf(c)==='mixte'?'libre':'mixte';bulk='';if(setMode(c,nx))launch(c);commit();break;}
+    case 'modeall':{const v=b.dataset.v,re=[];for(let c=1;c<=S.courts;c++)if(setMode(c,v))re.push(c);re.forEach(launch);bulk=`Tous les terrains passent en ${v==='mixte'?'mixte':'mélange libre'}${re.length?` ; ${re.length} terrain${re.length>1?'s':''} reproposé${re.length>1?'s':''}`:''}.`;commit();break;}
     case 'fill':{const n=fill();bulk=n?`${n} terrain${n>1?'s':''} rempli${n>1?'s':''} : vérifiez les équipes puis validez-les.`:'';commit();break;}
     case 'teams':startMatch(m);delete notes[id];bulk='';commit();break;
     case 'teamsall':{const ps=props();ps.forEach(startMatch);bulk=`${ps.length} terrain${ps.length>1?'s':''} lancé${ps.length>1?'s':''}.`;commit();break;}
@@ -346,7 +383,7 @@ document.addEventListener('change',e=>{
 $('#tvx').addEventListener('click',()=>{document.body.classList.remove('tv');try{document.fullscreenElement&&document.exitFullscreen().catch(()=>{})}catch(err){}render()});
 const tick=setInterval(()=>document.querySelectorAll('.el[data-start]').forEach(el=>el.textContent=fmt(Date.now()-+el.dataset.start)),1000);
 // Accès pour les tests automatiques
-window.__T={get S(){return S},set S(v){S=v},pick,fill,stats,queue,launch,setSlot};
+window.__T={get S(){return S},set S(v){S=v},pick,fill,stats,queue,launch,setSlot,isMixed};
 // Le logo prend toute la hauteur de la bande bleue, quelle que soit la largeur de l'écran.
 {const hb=$('.hbody'),lg=$('.logo');if(hb&&lg&&window.ResizeObserver){const fit=new ResizeObserver(()=>{const h=Math.round(hb.offsetHeight)-8;if(h>40){lg.style.width=lg.style.height=h+'px'}});fit.observe(hb)}}
 render();
