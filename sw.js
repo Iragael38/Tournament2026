@@ -1,11 +1,11 @@
 // Service worker : garde l'appli en mémoire pour qu'elle marche sans réseau.
 // Après une modification de l'appli, augmentez VERSION ici et le ?v= de style.css et app.js dans index.html.
-const VERSION = 'tournoi-v6';
+const VERSION = 'tournoi-v7';
 const FILES = [
   './',
   './index.html',
-  './style.css?v=6',
-  './app.js?v=6',
+  './style.css?v=7',
+  './app.js?v=7',
   './logo.svg',
   './vendor/qrcode.js',
   './manifest.webmanifest',

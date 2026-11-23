@@ -5,7 +5,7 @@
 //  2. Calculs : stats(), queue(), ranking() recalculent tout à partir des matchs ; rien d'autre n'est stocké.
 //  3. Tirage : pick() choisit les 4 joueurs du prochain match et forme les deux paires.
 //  Chaque match passe par trois états : 'prop' (proposé, équipes modifiables), 'live' (équipes validées, en jeu), 'done' (score validé).
-//  4. Affichage : render() redessine l'onglet courant à partir de S (vCourts, vPlayers, vRank, vMatches, vSettings).
+//  4. Affichage : render() redessine l'onglet courant à partir de S (vCourts, vPlayers, vRank, vStats, vMatches, vSettings).
 //  5. Actions : un seul écouteur de clics lit l'attribut data-act du bouton, modifie S puis appelle commit().
 {
 const KEY='badmelee-v1';
@@ -189,7 +189,7 @@ function vRank(st,limit,compact){
   return `<div class="scroll"><table><thead><tr><th>#</th><th>Joueur</th><th>J</th><th>V</th><th>% V</th><th>Écart</th>${compact?'':'<th>Écart/m</th><th>Temps joué</th><th>Durée moy.</th>'}</tr></thead><tbody>${rows}</tbody></table></div>
   ${compact?'':`<p class="mut" style="font-size:14px">Classement au pourcentage de victoires (juste même si tout le monde n'a pas joué autant), puis à l'écart de points moyen par match. La durée d'un match court de la validation des équipes à la validation du score.</p>`}`;
 }
-// ——— Statistiques et graphiques de l'onglet Classement ———
+// ——— Statistiques et graphiques de l'onglet Statistiques ———
 const median=a=>{if(!a.length)return 0;const b=[...a].sort((x,y)=>x-y),k=b.length>>1;return b.length%2?b[k]:(b[k-1]+b[k])/2};
 // Indicateurs : val() donne la valeur d'un joueur, min indique s'il faut un nombre minimum de matchs.
 const METRICS={
@@ -291,7 +291,7 @@ function render(){
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
   const M=$('#main');
   if(document.body.classList.contains('tv'))M.innerHTML=`${grid(st,true)}<div><div class="tvhead"><img src="logo.svg" alt="Logo Badadonf"><b>Badadonf<br>${esc(S.name)}</b></div><h2>Classement</h2>${vRank(st,15,true)}</div>`;
-  else M.innerHTML=tab==='courts'?vCourts(st):tab==='players'?vPlayers(st):tab==='rank'?`<h2>Classement individuel</h2>${vRank(st)}${vStats(st)}`:tab==='matches'?vMatches():vSettings();
+  else M.innerHTML=tab==='courts'?vCourts(st):tab==='players'?vPlayers(st):tab==='rank'?`<h2>Classement individuel</h2>${vRank(st)}`:tab==='stats'?(vStats(st)||'<div class="empty"><h2>Pas encore de statistiques</h2><p class="mut">Elles apparaîtront dès le premier score validé.</p></div>'):tab==='matches'?vMatches():vSettings();
   for(const id in keep){const i=document.getElementById(id);if(i)i.value=keep[id]}
 }
 const armed=new Map();
