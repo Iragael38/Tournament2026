@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Gestion d'un tournoi de badminton en double à la mêlée : tirage des paires, terrains, scores et classement individuel.">
+<meta name="theme-color" content="#0f5a43">
+<title>Tournoi à la mêlée</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="row"><h1 id="title">Tournoi à la mêlée</h1><div class="kpi" id="kpi"></div></div>
+  <nav id="nav">
+    <button data-tab="courts">Terrains</button><button data-tab="players">Joueurs</button><button data-tab="rank">Classement</button><button data-tab="matches">Matchs</button><button data-tab="settings">Réglages</button>
+  </nav>
+</header>
+<button id="tvx" class="pri">Quitter l'écran</button>
+<main id="main"></main>
+<div id="qrbox" class="modal" hidden>
+  <div class="sheet">
+    <h2>Ouvrir l'appli sur un autre téléphone</h2>
+    <div id="qr" class="qr"></div>
+    <p id="qrurl" class="mut"></p>
+    <p class="mut" style="font-size:14px">Le QR code ouvre l'appli vide sur l'autre téléphone : les scores ne sont pas partagés entre appareils.</p>
+    <button class="pri" data-act="qrclose">Fermer</button>
+  </div>
+</div>
+<script src="vendor/qrcode.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
