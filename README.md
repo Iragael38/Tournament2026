@@ -36,11 +36,36 @@ Pensée pour une table de marque en bord de terrain : un téléphone ou un ordin
 
 **Installer sur Android** : dans Chrome, menu ⋮ puis « Ajouter à l'écran d'accueil ».
 
+## Résultats en ligne (QR code spectateurs)
+
+Un organisateur peut publier le tournoi : chacun scanne alors un QR code et suit en direct les terrains, la file d'attente, le classement et les statistiques, **en lecture seule**.
+
+- **Publier** : onglet Réglages › Résultats en ligne › « Se connecter avec Google » puis « Publier ce tournoi en ligne ». Chaque validation (équipes, scores, joueurs) part ensuite automatiquement ; sans réseau, l'envoi se fait au retour de la connexion. Un point « ● en ligne » s'affiche dans l'en-tête.
+- **Partager** : bouton « QR code spectateurs » (Réglages ou page Terrains). Le lien a la forme `…/?voir=<identifiant>`.
+- **Changer d'appareil** : sur la page spectateur, un organisateur connecté peut « Reprendre la saisie sur cet appareil ».
+- **Après le tournoi** : « Supprimer les résultats en ligne ».
+- Sont publiés : prénoms, genres, matchs et scores. Les niveaux ne sont pas publiés.
+
+### Configuration Firebase (une seule fois)
+
+Projet Firebase `badadonf-tournoi`, base Firestore et connexion Google déjà créées. Il reste :
+
+1. **Règles de sécurité** : Firestore › onglet *Règles* : remplacer le contenu par celui de [`firestore.rules`](firestore.rules), puis *Publier*.
+2. **Liste des organisateurs** : Firestore › onglet *Données* › *Commencer une collection* :
+   - ID de collection : `config`
+   - ID du document : `organisateurs`
+   - champ `emails`, type **array**, avec une valeur (type *string*) par adresse, **en minuscules**.
+
+   Pour ajouter un organisateur plus tard, il suffit d'ajouter une valeur à ce tableau : les règles n'ont pas à changer.
+3. **Domaine autorisé** : Authentication › Paramètres › Domaines autorisés : `iragael38.github.io`.
+
+La configuration publique du projet est dans `cloud.js` (ces valeurs ne sont pas secrètes). Le SDK Firebase est embarqué dans `vendor/firebase.js` (voir `tools/README.md`) et n'est chargé que si l'on publie ou consulte un tournoi en ligne.
+
 ## Données et vie privée
 
-- Tout reste **dans le navigateur de l'appareil** (localStorage). Rien n'est envoyé sur Internet, il n'y a ni compte ni statistiques de visite.
+- Par défaut, tout reste **dans le navigateur de l'appareil** (localStorage). Rien n'est envoyé sur Internet tant que l'organisateur ne publie pas le tournoi (voir ci-dessus). Il n'y a pas de statistiques de visite.
 - Les données disparaissent si l'on vide les données du navigateur ou si l'on utilise la navigation privée. Pensez à **copier la sauvegarde** de temps en temps (onglet Réglages).
-- Chaque appareil a son propre tournoi : ouvrir l'appli sur un autre téléphone ne partage pas les scores.
+- Sans publication, chaque appareil a son propre tournoi : ouvrir l'appli sur un autre téléphone ne partage pas les scores.
 
 ## Mettre l'appli en ligne avec GitHub Pages
 
@@ -61,6 +86,10 @@ manifest.webmanifest  nom, icône et couleurs pour l'installation
 logo.svg              logo de l'association
 icons/                icônes de l'écran d'accueil (tirées du logo)
 vendor/qrcode.js      génération du QR code (Kazuhiko Arase, licence MIT)
+vendor/firebase.js    SDK Firebase 13.2.0 (Google, licence Apache-2.0), avis dans vendor/firebase.LICENSES.txt
+cloud.js              résultats en ligne : connexion, publication, suivi en direct
+firestore.rules       règles de sécurité de la base, à coller dans la console Firebase
+tools/                comment reconstruire vendor/firebase.js
 ```
 
 Le principe : un seul objet `S` contient les joueurs, les matchs et les réglages. Les statistiques, la file d'attente et le classement sont **recalculés** à partir des matchs à chaque affichage ; corriger un score met donc tout à jour automatiquement. Le détail est en tête de `app.js`.
@@ -70,7 +99,6 @@ Pour tester en local : ouvrir `index.html` dans un navigateur suffit (le mode ho
 ## À venir
 
 - Variante **au temps** : tous les terrains lancés ensemble, compte à rebours commun.
-- Suivi des scores en direct sur plusieurs téléphones (nécessitera une base de données en ligne).
 
 ## Licence
 

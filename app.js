@@ -13,8 +13,46 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fresh=()=>({name:'Tournoi de décembre',courts:6,target:21,auto:true,players:[],matches:[],seq:1});
 const load=()=>{try{const t=localStorage.getItem(KEY);return t?JSON.parse(t):null}catch(e){return null}};
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
-let S=load()||fresh(), tab='courts', editing=null, notes={}, bulk='';
+// Mode spectateur : lien ?voir=<identifiant>. Lecture seule, rien n'est enregistré sur l'appareil.
+const VIEW_ID=(new URLSearchParams(location.search).get('voir')||'').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40);
+const RO=!!VIEW_ID;
+const save=()=>{if(RO)return;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}cloudQueue()};
+let S=RO?Object.assign(fresh(),{name:'Chargement…'}):(load()||fresh()), tab='courts', editing=null, notes={}, bulk='';
+
+// ——— Résultats en ligne (Firebase) ———
+// Le module cloud.js n'est chargé qu'à la demande. S.cloud = {id, on} quand l'organisateur publie le tournoi.
+let takeOpen=false,cloudMod=null,cloudUser=null,cloudReady=false,cs={st:'',at:0,err:''},pubTimer=null,roState='load',roAt=0,roErr='',roData=null;
+function cloudLib(){
+  if(cloudMod)return Promise.resolve(cloudMod);
+  return import('./cloud.js?v=9').then(m=>{cloudMod=m;m.onUser(u=>{cloudUser=u;cloudReady=true;render();if(u&&S.cloud&&S.cloud.on)cloudQueue()});return m});
+}
+const errMsg=e=>{const c=(e&&e.code)||'';
+  if(c.includes('permission-denied'))return 'Publication refusée : cette adresse Google n\'est pas dans la liste des organisateurs.';
+  if(c.includes('unauthorized-domain'))return 'Ce site n\'est pas autorisé dans Firebase (Authentication › Domaines autorisés).';
+  if(c.includes('popup-closed')||c.includes('cancelled-popup'))return 'Connexion annulée.';
+  if(c.includes('unavailable')||c.includes('network'))return 'Réseau indisponible : nouvel essai automatique.';
+  return 'Erreur : '+((e&&e.message)||e);};
+// Version publique du tournoi : pas de niveau des joueurs, pas de sauvegarde interne.
+const pubData=()=>({name:S.name,courts:S.courts,target:S.target,cmode:S.cmode||{},players:S.players.map(p=>({id:p.id,name:p.name,g:p.g||'',on:p.on,t:p.t})),matches:S.matches});
+const viewUrl=()=>location.origin+location.pathname+'?voir='+(S.cloud&&S.cloud.id);
+function setCS(st,e){cs={st,at:Date.now(),err:e?errMsg(e):''};const el=document.getElementById('cloudst');if(el)el.innerHTML=csHtml();const k=document.getElementById('kcloud');if(k)k.outerHTML=kCloud()}
+const csHtml=()=>({wait:'Modifications en attente d\'envoi…',sending:'Envoi en cours…',offline:'Pas de réseau : les résultats partiront au retour de la connexion.',ok:`Résultats en ligne à jour (${new Date(cs.at).toLocaleTimeString('fr-FR')}).`,error:cs.err,login:'Connectez-vous pour reprendre l\'envoi des résultats.'}[cs.st]||'');
+const kCloud=()=>S.cloud&&S.cloud.on&&!RO?`<span id="kcloud" class="kc ${cs.st==='error'||cs.st==='login'?'bad':cs.st==='ok'?'okk':''}" title="${esc(csHtml())}">● en ligne</span>`:'';
+function cloudQueue(){
+  if(RO||!S.cloud||!S.cloud.on)return;
+  clearTimeout(pubTimer);setCS('wait');pubTimer=setTimeout(cloudPush,1200);
+}
+async function cloudPush(){
+  if(!S.cloud||!S.cloud.on)return;
+  try{
+    const m=await cloudLib();
+    if(!cloudReady)return; // la connexion se rétablit : onUser relancera l'envoi
+    if(!cloudUser){setCS('login');return}
+    setCS(navigator.onLine===false?'offline':'sending');
+    await m.publish(S.cloud.id,pubData());setCS('ok');
+  }catch(e){setCS('error',e)}
+}
+const newId=()=>{const a=new Uint8Array(12);crypto.getRandomValues(a);return Array.from(a,x=>'abcdefghijkmnpqrstuvwyz23456789'[x%31]).join('')};
 // Réglages des graphiques de l'onglet Classement
 let podM='pct', barM='pct', barG='all', barAsc=true;
 const P=id=>S.players.find(p=>p.id===id);
@@ -137,7 +175,7 @@ function grid(st,tv){
   for(let c=1;c<=max;c++){
     const m=am.find(x=>x.c===c),note=m&&notes[m.id]?esc(notes[m.id]):'',md=modeOf(c);
     const mbtn=tv?`<span class="mode">${md==='mixte'?'Mixte':'Libre'}</span>`:`<button class="mode${md==='mixte'?' mx':''}" data-act="cmode" data-c="${c}" title="Changer le type de match de ce terrain">${md==='mixte'?'Mixte':'Libre'}</button>`;
-    if(!m){h+=`<div class="court free"><div class="ch"><b>Terrain ${c}</b>${c<=S.courts?mbtn:''}</div><span>Libre</span>${c<=S.courts?`<button class="pri" data-act="launch" data-c="${c}" ${q.length<4?'disabled':''}>Proposer un match</button>`:''}${cnotes[c]?`<p class="msg">${esc(cnotes[c])}</p>`:''}</div>`;continue}
+    if(!m){h+=`<div class="court free"><div class="ch"><b>Terrain ${c}</b>${c<=S.courts?mbtn:''}</div><span>Libre</span>${c<=S.courts&&!tv?`<button class="pri" data-act="launch" data-c="${c}" ${q.length<4?'disabled':''}>Proposer un match</button>`:''}${cnotes[c]&&!tv?`<p class="msg">${esc(cnotes[c])}</p>`:''}</div>`;continue}
     if(m.st==='prop'){
       const side=k=>tv?team(k<2?m.a:m.b):picker(m,k,q,st)+picker(m,k+1,q,st);
       const warn=md==='mixte'&&!isMixed(m)?'Attention : les équipes ne sont plus mixtes.':'';
@@ -145,23 +183,28 @@ function grid(st,tv){
         <div class="half solo"><div class="names">${side(0)}</div></div>
         <div class="net"></div>
         <div class="half solo"><div class="names">${side(2)}</div></div>
-        <div class="cf"><button class="pri" data-act="teams" data-id="${m.id}">Valider les équipes</button><button class="ghost" data-act="cancel" data-id="${m.id}">Retirer</button></div>
-        <p class="msg">${[note,warn].filter(Boolean).join(' ')}</p></div>`;
+        ${tv?'':`<div class="cf"><button class="pri" data-act="teams" data-id="${m.id}">Valider les équipes</button><button class="ghost" data-act="cancel" data-id="${m.id}">Retirer</button></div>
+        <p class="msg">${[note,warn].filter(Boolean).join(' ')}</p>`}</div>`;
       continue;
     }
     h+=`<div class="court" id="court-${c}"><div class="ch"><b>Terrain ${c}</b><span class="hr">${m.mode==='mixte'?'<span class="mode">Mixte</span>':''}<span class="el" data-start="${m.start}">${fmt(Date.now()-m.start)}</span></span></div>
-      <div class="half"><div class="names">${team(m.a)}</div><input class="sc" id="sa-${m.id}" inputmode="numeric" pattern="[0-9]*" aria-label="Score équipe 1, terrain ${c}"></div>
+      <div class="half${tv?' solo':''}"><div class="names">${team(m.a)}</div>${tv?'':`<input class="sc" id="sa-${m.id}" inputmode="numeric" pattern="[0-9]*" aria-label="Score équipe 1, terrain ${c}">`}</div>
       <div class="net"></div>
-      <div class="half"><div class="names">${team(m.b)}</div><input class="sc" id="sb-${m.id}" inputmode="numeric" pattern="[0-9]*" aria-label="Score équipe 2, terrain ${c}"></div>
-      <div class="cf"><button class="pri" data-act="ok" data-id="${m.id}">Valider le score</button><button class="ghost" data-act="unlock" data-id="${m.id}">Équipes</button></div>
-      <p class="msg" id="msg-${m.id}">${note}</p></div>`;
+      <div class="half${tv?' solo':''}"><div class="names">${team(m.b)}</div>${tv?'':`<input class="sc" id="sb-${m.id}" inputmode="numeric" pattern="[0-9]*" aria-label="Score équipe 2, terrain ${c}">`}</div>
+      ${tv?'':`<div class="cf"><button class="pri" data-act="ok" data-id="${m.id}">Valider le score</button><button class="ghost" data-act="unlock" data-id="${m.id}">Équipes</button></div>
+      <p class="msg" id="msg-${m.id}">${note}</p>`}</div>`;
   }
   return `<div class="courts">${h}</div>`;
 }
+function vQueue(st,q){
+  const qh=q.length?q.map((p,i)=>`<span class="chip${i<4?' next':''}">${esc(p.name)}<i>${st[p.id].j}</i></span>`).join(''):'<span class="mut">Personne en attente.</span>';
+  return `<section class="queue"><h2>En attente (${q.length})</h2><p class="mut" style="margin-top:-6px">Dans l'ordre de passage ; le chiffre indique le nombre de matchs joués. Les 4 premiers sont encadrés.</p><div class="chips">${qh}</div></section>`;
+}
 function vCourts(st){
   const q=queue(st),nf=freeCourts().length,np=props().length,nl=live().length;
+  if(RO)return roBar()+(roState==='ok'?grid(st,true)+vQueue(st,q):'')+vTakeover();
   if(!S.players.length)return `<div class="empty"><h2>Aucun joueur pour l'instant</h2><p class="mut">Ajoutez les inscrits dans l'onglet Joueurs, ou testez avec des joueurs fictifs.</p><button class="pri" data-act="demo">Charger 36 joueurs fictifs</button></div>`;
-  const bar=`<div class="bar"><label class="sw"><input type="checkbox" id="auto" ${S.auto?'checked':''}> Proposer le match suivant dès qu'un terrain se libère</label><span class="sp"></span><button data-act="tv">Mode écran</button><button data-act="qr">QR code</button><button class="ghost" data-act="rand" ${live().length?'':'disabled'} title="Pour tester l'appli : remplit les scores vides des matchs en cours, sans les valider">Scores aléatoires (test)</button></div>`;
+  const bar=`<div class="bar"><label class="sw"><input type="checkbox" id="auto" ${S.auto?'checked':''}> Proposer le match suivant dès qu'un terrain se libère</label><span class="sp"></span><button data-act="tv">Mode écran</button><button data-act="qr">${S.cloud&&S.cloud.on?'QR spectateurs':'QR code'}</button><button class="ghost" data-act="rand" ${live().length?'':'disabled'} title="Pour tester l'appli : remplit les scores vides des matchs en cours, sans les valider">Scores aléatoires (test)</button></div>`;
   const ms=[];for(let c=1;c<=S.courts;c++)ms.push(modeOf(c));
   const all=ms.every(x=>x==='mixte')?'mixte':ms.every(x=>x==='libre')?'libre':'';
   const modebar=`<div class="bar modebar"><span>Type de match pour tous les terrains :</span><div class="chips seg" role="group">
@@ -173,8 +216,23 @@ function vCourts(st){
     <button data-act="teamsall" ${np?'':'disabled'}><b>2</b> Valider les équipes${np?` (${np})`:''}</button>
     <button class="pri" data-act="okall" ${nl?'':'disabled'}><b>3</b> Valider les scores saisis</button>
     ${bulk?`<p class="bulk" role="status">${esc(bulk)}</p>`:''}</div>`;
-  const qh=q.length?q.map((p,i)=>`<span class="chip${i<4?' next':''}">${esc(p.name)}<i>${st[p.id].j}</i></span>`).join(''):'<span class="mut">Personne en attente.</span>';
-  return bar+modebar+grid(st)+actions+`<section class="queue"><h2>En attente (${q.length})</h2><p class="mut" style="margin-top:-6px">Dans l'ordre de passage ; le chiffre indique le nombre de matchs joués. Les 4 premiers sont encadrés.</p><div class="chips">${qh}</div></section>`;
+  return bar+modebar+grid(st)+actions+vQueue(st,q);
+}
+// Bandeau du mode spectateur
+function roBar(){
+  if(roState==='load')return '<div class="robar">Chargement des résultats…</div>';
+  if(roState==='gone')return '<div class="empty"><h2>Ce tournoi n\'est plus en ligne</h2><p class="mut">L\'organisateur a arrêté la publication ou supprimé les résultats.</p></div>';
+  if(roState==='error')return `<div class="empty"><h2>Résultats indisponibles pour le moment</h2><p class="mut">${esc(roErr)}</p><p class="mut">La page se mettra à jour toute seule dès que la connexion reviendra.</p></div>`;
+  return `<div class="robar"><b>Résultats en direct</b> · mis à jour à ${new Date(roAt).toLocaleTimeString('fr-FR')} · lecture seule</div>`;
+}
+// Organisateur sur un autre appareil : reprendre la saisie à partir des résultats en ligne
+function vTakeover(){
+  if(roState!=='ok')return '';
+  const who=cloudUser?`<p>Connecté : <b>${esc(cloudUser.email||'')}</b> <button class="ghost" data-act="cloudlogout">Se déconnecter</button></p>
+    <p class="mut">Le tournoi éventuellement enregistré sur cet appareil sera remplacé. Les niveaux des joueurs ne sont pas publiés : à ressaisir si besoin. Arrêtez la saisie sur l'autre appareil pour éviter les conflits.</p>
+    <button class="pri" data-act="takeover">Reprendre la saisie sur cet appareil</button>`
+    :`<p class="mut">Réservé aux organisateurs déclarés.</p><button data-act="cloudlogin">Se connecter avec Google</button>`;
+  return `<details class="takeover card"${takeOpen?' open':''}><summary>Organisateur ? Reprendre la saisie sur cet appareil</summary>${who}<p class="mut" id="cloudmsg"></p></details>`;
 }
 function ranking(st){
   return S.players.map(p=>({p,s:st[p.id]})).sort((x,y)=>{
@@ -261,12 +319,12 @@ function vPlayers(st){
 function vMatches(){
   const ms=[...S.matches].reverse();
   if(!ms.length)return '<p class="mut">Aucun match pour l\'instant.</p>';
-  return `<p class="mut">Touchez « Modifier » pour corriger un score saisi par erreur.</p>`+ms.map(m=>{
+  return (RO?'':`<p class="mut">Touchez « Modifier » pour corriger un score saisi par erreur.</p>`)+ms.map(m=>{
     if(m.st==='prop')return `<div class="mrow"><span class="t">T${m.c}</span><span class="tm">${m.a.map(nm).join(' & ')} <span class="mut">contre</span> ${m.b.map(nm).join(' & ')}</span><span class="mut">proposé</span></div>`;
     if(m.st==='live')return `<div class="mrow"><span class="t">T${m.c}</span><span class="tm">${m.a.map(nm).join(' & ')} <span class="mut">contre</span> ${m.b.map(nm).join(' & ')}</span><span class="mut">en cours</span></div>`;
     if(editing===m.id)return `<div class="mrow"><span class="t">T${m.c}</span><span class="tm">${m.a.map(nm).join(' & ')} / ${m.b.map(nm).join(' & ')}</span><input id="ea" inputmode="numeric" value="${m.sa}" aria-label="Score équipe 1"><input id="eb" inputmode="numeric" value="${m.sb}" aria-label="Score équipe 2"><button class="pri" data-act="esave" data-id="${m.id}">Enregistrer</button><button class="ghost warn" data-act="edel" data-id="${m.id}">Supprimer</button><button class="ghost" data-act="ecancel">Fermer</button></div>`;
     const wa=m.sa>m.sb;
-    return `<div class="mrow"><span class="t">T${m.c}</span><span class="tm"><span class="${wa?'w':''}">${m.a.map(nm).join(' & ')}</span> <span class="mut">contre</span> <span class="${wa?'':'w'}">${m.b.map(nm).join(' & ')}</span></span><span class="s">${m.sa}–${m.sb}</span><button class="ghost" data-act="edit" data-id="${m.id}">Modifier</button></div>`;
+    return `<div class="mrow"><span class="t">T${m.c}</span><span class="tm"><span class="${wa?'w':''}">${m.a.map(nm).join(' & ')}</span> <span class="mut">contre</span> <span class="${wa?'':'w'}">${m.b.map(nm).join(' & ')}</span></span><span class="s">${m.sa}–${m.sb}</span>${RO?'':`<button class="ghost" data-act="edit" data-id="${m.id}">Modifier</button>`}</div>`;
   }).join('');
 }
 function vSettings(){
@@ -279,18 +337,37 @@ function vSettings(){
     <div class="card"><h2>Sauvegarde</h2><p class="mut" style="margin-top:-6px">Tout est enregistré automatiquement dans ce navigateur. Par sécurité, copiez la sauvegarde de temps en temps (dans une note ou un message), ou pour reprendre le tournoi sur un autre appareil.</p>
     <textarea id="dump" readonly>${esc(dump)}</textarea><div class="bar" style="margin-top:10px"><button data-act="copy">Copier la sauvegarde</button><span id="copied" class="mut"></span></div>
     <label class="field"><span>Restaurer une sauvegarde</span><textarea id="imp" placeholder="Collez ici une sauvegarde"></textarea></label><button data-act="import">Restaurer</button> <span id="impmsg" class="mut"></span></div>
+    ${vCloud()}
     <div class="card"><h2>Installer et partager</h2><p class="mut" style="margin-top:-6px">Dans Chrome sur Android : menu ⋮ puis « Ajouter à l'écran d'accueil ». L'appli marche ensuite sans réseau.</p><button data-act="qr">Afficher le QR code de l'appli</button></div>
     <div class="card"><h2>Test et remise à zéro</h2><p class="mut" style="margin-top:-6px">Pour faire un tournoi blanc : remplit des scores au hasard sur tous les matchs en cours.</p>
     <div class="bar"><button data-act="sim">Simuler les scores en cours</button><button class="warn" data-act="reset">Tout effacer</button></div></div></div>`;
+}
+// Carte « Résultats en ligne » des réglages
+function vCloud(){
+  const on=S.cloud&&S.cloud.on;
+  let body;
+  if(!cloudMod&&!on)body=`<p class="mut" style="margin-top:-6px">Publiez le tournoi pour que chacun suive les terrains, la file d'attente et le classement en direct en scannant un QR code, sans pouvoir rien modifier. Réservé aux organisateurs déclarés, avec leur compte Google.</p><button data-act="cloudlogin">Se connecter avec Google</button>`;
+  else if(!cloudReady)body='<p class="mut">Connexion à Firebase…</p>';
+  else if(!cloudUser)body=`<p class="mut" style="margin-top:-6px">${on?'La publication est active mais vous n\'êtes plus connecté : les nouveaux résultats ne partent pas.':'Réservé aux organisateurs déclarés, avec leur compte Google.'}</p><button class="pri" data-act="cloudlogin">Se connecter avec Google</button>`;
+  else body=`<p>Connecté : <b>${esc(cloudUser.email||'')}</b> <button class="ghost" data-act="cloudlogout">Se déconnecter</button></p>`+(on
+    ?`<p class="cloudst" id="cloudst" role="status">${csHtml()}</p>
+      <div class="bar"><button class="pri" data-act="qr">QR code spectateurs</button><button data-act="cloudcopy">Copier le lien</button></div>
+      <p class="mut" style="font-size:14px;overflow-wrap:anywhere">${esc(viewUrl())}</p>
+      <div class="bar"><button data-act="cloudoff">Suspendre la publication</button><button class="warn" data-act="clouddel">Supprimer les résultats en ligne</button></div>
+      <p class="mut" style="font-size:14px">Les prénoms, genres et scores sont visibles par toute personne qui a le lien. Supprimez les résultats en ligne après le tournoi.</p>`
+    :`<p class="mut">${S.cloud&&S.cloud.id?'Publication suspendue : les spectateurs voient les derniers résultats envoyés.':'Le tournoi n\'est pas encore publié.'}</p><button class="pri" data-act="cloudon">${S.cloud&&S.cloud.id?'Reprendre la publication':'Publier ce tournoi en ligne'}</button>${S.cloud&&S.cloud.id?' <button class="warn" data-act="clouddel">Supprimer les résultats en ligne</button>':''}`);
+  return `<div class="card"><h2>Résultats en ligne</h2>${body}<p class="mut" id="cloudmsg"></p></div>`;
 }
 function render(){
   const keep={};document.querySelectorAll('input.sc').forEach(i=>{if(i.value)keep[i.id]=i.value});
   const st=stats(),done=S.matches.filter(m=>m.st==='done').length,lm=live().length,np=props().length,q=queue(st).length;
   $('#title').textContent=S.name;
-  $('#kpi').innerHTML=`<b>${done}</b> joués · <b>${lm}</b> en cours${np?` · <b>${np}</b> à valider`:''} · <b>${q}</b> en attente`;
+  $('#kpi').innerHTML=`<b>${done}</b> joués · <b>${lm}</b> en cours${np?` · <b>${np}</b> à valider`:''} · <b>${q}</b> en attente ${kCloud()}`;
+  if(RO&&(tab==='players'||tab==='settings'))tab='courts';
   document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
   const M=$('#main');
   if(document.body.classList.contains('tv'))M.innerHTML=`${grid(st,true)}<div><div class="tvhead"><img src="logo.svg" alt="Logo Badadonf"><b>Badadonf<br>${esc(S.name)}</b></div><h2>Classement</h2>${vRank(st,15,true)}</div>`;
+  else if(RO&&tab!=='courts'&&roState!=='ok')M.innerHTML=roBar();
   else M.innerHTML=tab==='courts'?vCourts(st):tab==='players'?vPlayers(st):tab==='rank'?`<h2>Classement individuel</h2>${vRank(st)}`:tab==='stats'?(vStats(st)||'<div class="empty"><h2>Pas encore de statistiques</h2><p class="mut">Elles apparaîtront dès le premier score validé.</p></div>'):tab==='matches'?vMatches():vSettings();
   for(const id in keep){const i=document.getElementById(id);if(i)i.value=keep[id]}
 }
@@ -358,9 +435,23 @@ document.addEventListener('click',e=>{
     case 'import':{try{const o=JSON.parse($('#imp').value);if(!Array.isArray(o.players)||!Array.isArray(o.matches))throw 0;S=Object.assign(fresh(),o);commit();$('#impmsg').textContent='Sauvegarde restaurée.'}catch(err){$('#impmsg').textContent='Sauvegarde illisible.'}break;}
     case 'sim':props().forEach(startMatch);live().forEach(x=>{x.start=Math.min(x.start,Date.now()-(8+Math.random()*12)*60000);const w=S.target,l=Math.floor(Math.random()*(w-3));if(Math.random()<.5)Object.assign(x,{sa:w,sb:l});else Object.assign(x,{sa:l,sb:w});Object.assign(x,{st:'done',end:Date.now()})});if(S.auto)fill();commit();break;
     case 'qr':{
-      const url=location.href.split('#')[0],box=$('#qrbox');
+      const pub=S.cloud&&S.cloud.on&&!RO,url=RO?location.href.split('#')[0]:pub?viewUrl():location.origin+location.pathname,box=$('#qrbox');
       try{const q=qrcode(0,'M');q.addData(url);q.make();$('#qr').innerHTML=q.createSvgTag({cellSize:6,margin:2,scalable:true})}catch(err){$('#qr').textContent='QR code indisponible.'}
+      $('#qrtitle').textContent=pub||RO?'Suivre les résultats en direct':'Ouvrir l\'appli sur un autre téléphone';
+      $('#qrnote').textContent=pub||RO?'Le QR code ouvre les terrains, la file d\'attente et le classement en direct, en lecture seule.':'Le QR code ouvre l\'appli vide sur l\'autre téléphone : les scores ne sont pas partagés. Publiez le tournoi (Réglages › Résultats en ligne) pour un suivi en direct.';
       $('#qrurl').textContent=url;box.hidden=false;break;}
+    case 'cloudlogin':{const msg=()=>document.getElementById('cloudmsg');b.disabled=true;
+      cloudLib().then(()=>{render();return cloudMod.login()}).then(()=>{render()}).catch(err=>{render();const el=msg();if(el)el.textContent=errMsg(err)});break;}
+    case 'cloudlogout':cloudMod&&cloudMod.logout().then(render);break;
+    case 'cloudon':S.cloud={id:(S.cloud&&S.cloud.id)||newId(),on:true};save();render();break;
+    case 'cloudoff':S.cloud.on=false;clearTimeout(pubTimer);cs={st:'',at:0,err:''};save();render();break;
+    case 'cloudcopy':navigator.clipboard?.writeText(viewUrl()).then(()=>{const el=document.getElementById('cloudmsg');if(el)el.textContent='Lien copié.'},()=>{});break;
+    case 'clouddel':twoStep(b,'Confirmer la suppression ?',()=>{const id=S.cloud&&S.cloud.id;clearTimeout(pubTimer);
+      cloudLib().then(m=>m.remove(id)).then(()=>{S.cloud=null;cs={st:'',at:0,err:''};save();render();const el=document.getElementById('cloudmsg');if(el)el.textContent='Résultats en ligne supprimés.'}).catch(err=>{const el=document.getElementById('cloudmsg');if(el)el.textContent=errMsg(err)})});break;
+    case 'takeover':twoStep(b,'Confirmer : remplacer le tournoi de cet appareil ?',()=>{
+      if(!roData)return;const o=Object.assign(fresh(),roData,{cloud:{id:VIEW_ID,on:true}});
+      try{localStorage.setItem(KEY,JSON.stringify(o))}catch(err){}
+      location.replace(location.pathname)});break;
     case 'podm':podM=b.dataset.v;render();break;
     case 'barm':barM=b.dataset.v;render();break;
     case 'barg':barG=b.dataset.v;render();break;
@@ -387,6 +478,16 @@ document.addEventListener('change',e=>{
 });
 $('#tvx').addEventListener('click',()=>{document.body.classList.remove('tv');try{document.fullscreenElement&&document.exitFullscreen().catch(()=>{})}catch(err){}render()});
 const tick=setInterval(()=>document.querySelectorAll('.el[data-start]').forEach(el=>el.textContent=fmt(Date.now()-+el.dataset.start)),1000);
+// Garde ouvert le panneau « Organisateur ? » après un nouvel affichage
+document.addEventListener('toggle',e=>{if(e.target.classList&&e.target.classList.contains('takeover'))takeOpen=e.target.open},true);
+// Démarrage des résultats en ligne
+if(RO){
+  document.body.classList.add('ro');
+  cloudLib().then(m=>m.watch(VIEW_ID,(data,at)=>{
+    if(!data){roState='gone';roData=null}else{roData=data;S=Object.assign(fresh(),data,{auto:false});roState='ok';roAt=at}
+    render();
+  },e=>{roState='error';roErr=errMsg(e);render()})).catch(e=>{roState='error';roErr=errMsg(e);render()});
+}else if(S.cloud&&S.cloud.on){cloudLib().catch(e=>setCS('error',e))}
 // Accès pour les tests automatiques
 window.__T={get S(){return S},set S(v){S=v},pick,fill,stats,queue,launch,setSlot,isMixed};
 // Le logo prend toute la hauteur de la bande bleue, quelle que soit la largeur de l'écran.
