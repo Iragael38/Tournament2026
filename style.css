@@ -157,3 +157,12 @@ button.mode{min-height:32px;padding:4px 12px;cursor:pointer}
 .mode.mx,span.mode{background:#d8d2c42a}
 .court.free .ch{width:100%;align-self:stretch;padding:0 2px}
 .modebar{gap:8px 12px}.modebar .chips.seg{margin:0}.modebar .mut{font-size:14px;flex-basis:100%}
+/* Résultats en ligne */
+.kc{font-size:13px;color:var(--acc);white-space:nowrap;margin-left:4px}
+.kc.okk{color:#8fd3a8}.kc.bad{color:#ff9b8a}
+.cloudst{font-weight:600;margin:6px 0 10px}
+.robar{background:var(--card);border:1px solid var(--bd);border-left:4px solid var(--mark);border-radius:10px;padding:10px 14px;margin-bottom:16px}
+body.ro nav [data-tab=players],body.ro nav [data-tab=settings]{display:none}
+.takeover{margin-top:28px}
+.takeover summary{cursor:pointer;font-weight:600;min-height:44px;display:flex;align-items:center}
+.takeover p{margin:10px 0}

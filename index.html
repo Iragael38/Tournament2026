@@ -10,7 +10,7 @@
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 <header>
@@ -26,14 +26,14 @@
 <main id="main"></main>
 <div id="qrbox" class="modal" hidden>
   <div class="sheet">
-    <h2>Ouvrir l'appli sur un autre téléphone</h2>
+    <h2 id="qrtitle">Ouvrir l'appli sur un autre téléphone</h2>
     <div id="qr" class="qr"></div>
     <p id="qrurl" class="mut"></p>
-    <p class="mut" style="font-size:14px">Le QR code ouvre l'appli vide sur l'autre téléphone : les scores ne sont pas partagés entre appareils.</p>
+    <p class="mut" id="qrnote" style="font-size:14px"></p>
     <button class="pri" data-act="qrclose">Fermer</button>
   </div>
 </div>
 <script src="vendor/qrcode.js"></script>
-<script src="app.js?v=8"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
