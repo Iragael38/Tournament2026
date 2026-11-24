@@ -19,7 +19,7 @@ Pensée pour une table de marque en bord de terrain : un téléphone ou un ordin
 - **Classement individuel** : pourcentage de victoires, puis écart de points moyen par match. Il reste juste même si tout le monde n'a pas joué le même nombre de matchs.
   Le tableau indique aussi le temps de jeu total et la durée moyenne des matchs de chaque joueur (de la validation des équipes à celle du score).
 - **Statistiques** (onglet du même nom) :
-  - le tournoi en chiffres : matchs joués, durée moyenne, temps de jeu cumulé, matchs serrés, plus gros écart ;
+  - le tournoi en chiffres : matchs joués, durée moyenne, temps de jeu cumulé, match le plus long, le plus court, plus gros écart, matchs serrés. Chaque case liée à un match indique son numéro, son terrain, les joueurs et le score ; un appui ouvre ce match dans l'onglet Matchs (ou la liste des matchs serrés) ;
   - podiums général, femmes et hommes au choix : % de victoires, écart de points cumulé, plus longue série de victoires, points par match, temps de jeu. Pour les moyennes, seuls les joueurs ayant joué au moins le nombre médian de matchs sont classés ;
   - graphique en barres de tous les joueurs, du plus petit au plus grand (ou l'inverse), filtrable par genre : % de victoires, écart cumulé, points marqués, points par match, matchs joués, temps de jeu, durée moyenne.
 - **Historique** : correction ou suppression d'un score saisi par erreur.

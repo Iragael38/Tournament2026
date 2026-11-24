@@ -55,6 +55,11 @@ async function cloudPush(){
 const newId=()=>{const a=new Uint8Array(12);crypto.getRandomValues(a);return Array.from(a,x=>'abcdefghijkmnpqrstuvwyz23456789'[x%31]).join('')};
 // Réglages des graphiques de l'onglet Classement
 let podM='pct', barM='pct', barG='all', barAsc=true;
+// Onglet Matchs : match mis en évidence (depuis les statistiques) et filtre éventuel ('serres')
+let matchFocus=null, mFilter='';
+const mNo=m=>S.matches.indexOf(m)+1;
+const mDur=m=>m.start&&m.end>m.start?m.end-m.start:0;
+const mDesc=m=>`${m.a.map(nm).join(' & ')} contre ${m.b.map(nm).join(' & ')}, ${m.sa}–${m.sb}`;
 const P=id=>S.players.find(p=>p.id===id);
 const nm=id=>esc(P(id)?.name||'?');
 const live=()=>S.matches.filter(m=>m.st==='live');
@@ -270,13 +275,20 @@ function vStats(st){
   const longest=timed.length?timed.reduce((a,b)=>(b.end-b.start)>(a.end-a.start)?b:a):null;
   const widest=done.reduce((a,b)=>Math.abs(b.sa-b.sb)>Math.abs(a.sa-a.sb)?b:a);
   const tight=done.filter(m=>Math.abs(m.sa-m.sb)<=2).length;
+  const shortest=timed.length?timed.reduce((a,b)=>mDur(b)<mDur(a)?b:a):null;
+  // Une case liée à un match l'indique (n°, terrain, joueurs, score) et y mène d'un appui.
+  const about=m=>`n°${mNo(m)} · terrain ${m.c}<br>${mDesc(m)}`;
   const tiles=[
-    ['Matchs joués',done.length,`${played.length} joueurs ont joué`],
-    ['Durée moyenne d\'un match',durs.length?fmtDur(durs.reduce((a,b)=>a+b,0)/durs.length):'–',longest?`le plus long : ${fmtDur(longest.end-longest.start)} (T${longest.c})`:''],
-    ['Temps de jeu cumulé',durs.length?fmtDur(durs.reduce((a,b)=>a+b,0)):'–','sur tous les terrains'],
-    ['Matchs serrés',tight,'2 points d\'écart ou moins'],
-    ['Plus gros écart',`${Math.max(widest.sa,widest.sb)}–${Math.min(widest.sa,widest.sb)}`,`terrain ${widest.c}`]
-  ].map(([l,v,n])=>`<div class="tile"><span>${l}</span><b>${v}</b><small>${esc(n)}</small></div>`).join('');
+    {l:'Matchs joués',v:done.length,n:`${played.length} joueurs ont joué`},
+    {l:'Durée moyenne d\'un match',v:durs.length?fmtDur(durs.reduce((a,b)=>a+b,0)/durs.length):'–',n:'de la validation des équipes à celle du score'},
+    {l:'Temps de jeu cumulé',v:durs.length?fmtDur(durs.reduce((a,b)=>a+b,0)):'–',n:'sur tous les terrains'},
+    longest&&{l:'Match le plus long',v:fmtDur(mDur(longest)),n:about(longest),act:`data-act="gomatch" data-id="${longest.id}"`},
+    shortest&&shortest!==longest&&{l:'Match le plus court',v:fmtDur(mDur(shortest)),n:about(shortest),act:`data-act="gomatch" data-id="${shortest.id}"`},
+    {l:'Plus gros écart',v:`${Math.max(widest.sa,widest.sb)}–${Math.min(widest.sa,widest.sb)}`,n:about(widest),act:`data-act="gomatch" data-id="${widest.id}"`},
+    {l:'Matchs serrés',v:tight,n:'2 points d\'écart ou moins',act:tight?'data-act="gotight"':''}
+  ].filter(Boolean).map(t=>t.act
+    ?`<button class="tile link" ${t.act}><span>${t.l}</span><b>${t.v}</b><small>${t.n}</small><em>${t.act.includes('gotight')?'Voir ces matchs':'Voir le match'} ›</em></button>`
+    :`<div class="tile"><span>${t.l}</span><b>${t.v}</b><small>${esc(t.n)}</small></div>`).join('');
   // Podiums : général, femmes, hommes
   const M=METRICS[podM];
   const podium=(title,list)=>{
@@ -317,14 +329,18 @@ function vPlayers(st){
     <div><h2>${S.players.length} joueurs · ${on} présents</h2><p class="mut" style="margin-top:-6px">Touchez un nom pour le corriger. « Absent » retire un joueur des prochains tirages sans effacer ses résultats (blessure, départ). Le niveau est facultatif : s'il est renseigné, les paires sont équilibrées. Le genre sert aux podiums femmes et hommes.</p><div class="plist">${rows||'<p class="mut">Aucun joueur.</p>'}</div></div></div>`;
 }
 function vMatches(){
-  const ms=[...S.matches].reverse();
+  let ms=[...S.matches].reverse();
   if(!ms.length)return '<p class="mut">Aucun match pour l\'instant.</p>';
-  return (RO?'':`<p class="mut">Touchez « Modifier » pour corriger un score saisi par erreur.</p>`)+ms.map(m=>{
-    if(m.st==='prop')return `<div class="mrow"><span class="t">T${m.c}</span><span class="tm">${m.a.map(nm).join(' & ')} <span class="mut">contre</span> ${m.b.map(nm).join(' & ')}</span><span class="mut">proposé</span></div>`;
-    if(m.st==='live')return `<div class="mrow"><span class="t">T${m.c}</span><span class="tm">${m.a.map(nm).join(' & ')} <span class="mut">contre</span> ${m.b.map(nm).join(' & ')}</span><span class="mut">en cours</span></div>`;
-    if(editing===m.id)return `<div class="mrow"><span class="t">T${m.c}</span><span class="tm">${m.a.map(nm).join(' & ')} / ${m.b.map(nm).join(' & ')}</span><input id="ea" inputmode="numeric" value="${m.sa}" aria-label="Score équipe 1"><input id="eb" inputmode="numeric" value="${m.sb}" aria-label="Score équipe 2"><button class="pri" data-act="esave" data-id="${m.id}">Enregistrer</button><button class="ghost warn" data-act="edel" data-id="${m.id}">Supprimer</button><button class="ghost" data-act="ecancel">Fermer</button></div>`;
+  let head=RO?'':`<p class="mut">Touchez « Modifier » pour corriger un score saisi par erreur.</p>`;
+  if(mFilter==='serres'){ms=ms.filter(m=>m.st==='done'&&Math.abs(m.sa-m.sb)<=2);head=`<div class="robar"><b>Matchs serrés</b> (2 points d'écart ou moins) : ${ms.length} · <button class="ghost" data-act="mfilter">Tout afficher</button></div>`}
+  return head+ms.map(m=>{
+    const no=`<span class="t">T${m.c}<small>n°${mNo(m)}</small></span>`,fc=matchFocus===m.id?' focus':'',rid=`id="match-${m.id}"`;
+    if(m.st==='prop')return `<div class="mrow" ${rid}>${no}<span class="tm">${m.a.map(nm).join(' & ')} <span class="mut">contre</span> ${m.b.map(nm).join(' & ')}</span><span class="mut">proposé</span></div>`;
+    if(m.st==='live')return `<div class="mrow" ${rid}>${no}<span class="tm">${m.a.map(nm).join(' & ')} <span class="mut">contre</span> ${m.b.map(nm).join(' & ')}</span><span class="mut">en cours</span></div>`;
+    if(editing===m.id)return `<div class="mrow edit" ${rid}>${no}<span class="tm">${m.a.map(nm).join(' & ')} <span class="mut">contre</span> ${m.b.map(nm).join(' & ')}</span>
+      <div class="ed"><input id="ea" inputmode="numeric" value="${m.sa}" aria-label="Score équipe 1"><span class="mut">–</span><input id="eb" inputmode="numeric" value="${m.sb}" aria-label="Score équipe 2"><button class="pri" data-act="esave" data-id="${m.id}">Enregistrer</button><button class="ghost" data-act="ecancel">Fermer</button><button class="ghost warn" data-act="edel" data-id="${m.id}">Supprimer</button></div></div>`;
     const wa=m.sa>m.sb;
-    return `<div class="mrow"><span class="t">T${m.c}</span><span class="tm"><span class="${wa?'w':''}">${m.a.map(nm).join(' & ')}</span> <span class="mut">contre</span> <span class="${wa?'':'w'}">${m.b.map(nm).join(' & ')}</span></span><span class="s">${m.sa}–${m.sb}</span>${RO?'':`<button class="ghost" data-act="edit" data-id="${m.id}">Modifier</button>`}</div>`;
+    return `<div class="mrow${fc}" ${rid}>${no}<span class="tm"><span class="${wa?'w':''}">${m.a.map(nm).join(' & ')}</span> <span class="mut">contre</span> <span class="${wa?'':'w'}">${m.b.map(nm).join(' & ')}</span></span><span class="s">${m.sa}–${m.sb}${mDur(m)?`<small>${fmtDur(mDur(m))}</small>`:''}</span>${RO?'':`<button class="ghost" data-act="edit" data-id="${m.id}">Modifier</button>`}</div>`;
   }).join('');
 }
 function vSettings(){
@@ -389,7 +405,7 @@ function addNames(list){
   return n;
 }
 document.addEventListener('click',e=>{
-  const t=e.target.closest('[data-tab]');if(t){tab=t.dataset.tab;editing=null;render();return}
+  const t=e.target.closest('[data-tab]');if(t){tab=t.dataset.tab;editing=null;matchFocus=null;mFilter='';render();return}
   const b=e.target.closest('button[data-act]');if(!b)return;
   const id=+b.dataset.id,m=S.matches.find(x=>x.id===id);
   switch(b.dataset.act){
@@ -452,6 +468,10 @@ document.addEventListener('click',e=>{
       if(!roData)return;const o=Object.assign(fresh(),roData,{cloud:{id:VIEW_ID,on:true}});
       try{localStorage.setItem(KEY,JSON.stringify(o))}catch(err){}
       location.replace(location.pathname)});break;
+    case 'gomatch':{tab='matches';mFilter='';matchFocus=id;editing=null;render();
+      const el=document.getElementById('match-'+id);if(el){const still=matchMedia('(prefers-reduced-motion: reduce)').matches;el.scrollIntoView({block:'center',behavior:still?'auto':'smooth'})}break;}
+    case 'gotight':tab='matches';mFilter='serres';matchFocus=null;editing=null;render();window.scrollTo(0,0);break;
+    case 'mfilter':mFilter='';render();break;
     case 'podm':podM=b.dataset.v;render();break;
     case 'barm':barM=b.dataset.v;render();break;
     case 'barg':barG=b.dataset.v;render();break;
