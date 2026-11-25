@@ -16,15 +16,42 @@ const load=()=>{try{const t=localStorage.getItem(KEY);return t?JSON.parse(t):nul
 // Mode spectateur : lien ?voir=<identifiant>. Lecture seule, rien n'est enregistré sur l'appareil.
 const VIEW_ID=(new URLSearchParams(location.search).get('voir')||'').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40);
 const RO=!!VIEW_ID;
-const save=()=>{if(RO)return;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}cloudQueue()};
+const saveLocal=()=>{if(RO)return;try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const save=()=>{saveLocal();cloudQueue()};
 let S=RO?Object.assign(fresh(),{name:'Chargement…'}):(load()||fresh()), tab='courts', editing=null, notes={}, bulk='';
 
 // ——— Résultats en ligne (Firebase) ———
-// Le module cloud.js n'est chargé qu'à la demande. S.cloud = {id, on} quand l'organisateur publie le tournoi.
-let takeOpen=false,cloudMod=null,cloudUser=null,cloudReady=false,cs={st:'',at:0,err:''},pubTimer=null,roState='load',roAt=0,roErr='',roData=null;
+// Le module cloud.js n'est chargé qu'à la demande.
+// S.cloud = {id, on, ver} : identifiant du tournoi en ligne, publication active, dernière version connue.
+let takeOpen=false,cloudMod=null,cloudUser=null,cloudReady=false,cs={st:'',at:0,err:''},pubTimer=null,roState='load',roAt=0,roErr='',roData=null,roVer=0;
+// Liste des tournois en ligne (organisateurs), conflit éventuel avec un autre appareil
+let onlineList=null,listErr='',conflict=null,forceNext=false,cloudNote='';
 function cloudLib(){
   if(cloudMod)return Promise.resolve(cloudMod);
-  return import('./cloud.js?v=9').then(m=>{cloudMod=m;m.onUser(u=>{cloudUser=u;cloudReady=true;render();if(u&&S.cloud&&S.cloud.on)cloudQueue()});return m});
+  return import('./cloud.js?v=10').then(m=>{cloudMod=m;m.onUser(u=>{const was=cloudUser;cloudUser=u;cloudReady=true;
+    if(u&&!RO){refreshList(!was);if(S.cloud&&S.cloud.on)cloudQueue()}else{onlineList=null}render()});return m});
+}
+const localEmpty=()=>!S.players.length&&!S.matches.length;
+// Récupère la liste des tournois en ligne ; au premier affichage, charge le plus récent si l'appareil est vide.
+async function refreshList(auto){
+  if(!cloudMod||!cloudUser)return;
+  listErr='';
+  try{
+    onlineList=await cloudMod.list();
+    if(auto&&localEmpty()&&onlineList.length)loadOnline(onlineList[0],true);
+  }catch(e){onlineList=[];listErr=(e.code||'').includes('permission')?'Liste des tournois refusée : vérifiez que les nouvelles règles Firestore sont publiées et que votre adresse est dans config/organisateurs.':errMsg(e)}
+  render();
+}
+// Remplace le tournoi de l'appareil par une version en ligne. Les niveaux (non publiés) sont gardés si c'est le même tournoi.
+function loadOnline(sum,auto){
+  if(!sum||!sum.data)return;
+  const lv={};if(S.cloud&&S.cloud.id===sum.id)S.players.forEach(p=>{if(p.lv)lv[p.id]=p.lv});
+  S=Object.assign(fresh(),sum.data,{cloud:{id:sum.id,on:true,ver:sum.version}});
+  S.players.forEach(p=>{if(lv[p.id])p.lv=lv[p.id]});
+  S.cloud.h=pubHash();
+  conflict=null;clearTimeout(pubTimer);saveLocal();cs={st:'ok',at:Date.now(),err:''};
+  cloudNote=`${auto?'Cet appareil était vide : ':''}tournoi « ${sum.nom} » chargé depuis la version en ligne (${sum.joueurs} joueurs, ${sum.matchs} matchs terminés).`;
+  render();
 }
 const errMsg=e=>{const c=(e&&e.code)||'';
   if(c.includes('permission-denied'))return 'Publication refusée : cette adresse Google n\'est pas dans la liste des organisateurs.';
@@ -34,13 +61,25 @@ const errMsg=e=>{const c=(e&&e.code)||'';
   return 'Erreur : '+((e&&e.message)||e);};
 // Version publique du tournoi : pas de niveau des joueurs, pas de sauvegarde interne.
 const pubData=()=>({name:S.name,courts:S.courts,target:S.target,cmode:S.cmode||{},players:S.players.map(p=>({id:p.id,name:p.name,g:p.g||'',on:p.on,t:p.t})),matches:S.matches});
+// Empreinte de la version publique : on n'envoie que si le tournoi a changé depuis le dernier envoi ou chargement.
+const pubHash=()=>{const t=JSON.stringify(pubData());let h=5381;for(let i=0;i<t.length;i++)h=(h*33^t.charCodeAt(i))>>>0;return h.toString(36)+t.length};
 const viewUrl=()=>location.origin+location.pathname+'?voir='+(S.cloud&&S.cloud.id);
 function setCS(st,e){cs={st,at:Date.now(),err:e?errMsg(e):''};const el=document.getElementById('cloudst');if(el)el.innerHTML=csHtml();const k=document.getElementById('kcloud');if(k)k.outerHTML=kCloud()}
-const csHtml=()=>({wait:'Modifications en attente d\'envoi…',sending:'Envoi en cours…',offline:'Pas de réseau : les résultats partiront au retour de la connexion.',ok:`Résultats en ligne à jour (${new Date(cs.at).toLocaleTimeString('fr-FR')}).`,error:cs.err,login:'Connectez-vous pour reprendre l\'envoi des résultats.'}[cs.st]||'');
-const kCloud=()=>S.cloud&&S.cloud.on&&!RO?`<span id="kcloud" class="kc ${cs.st==='error'||cs.st==='login'?'bad':cs.st==='ok'?'okk':''}" title="${esc(csHtml())}">● en ligne</span>`:'';
+const csHtml=()=>({wait:'Modifications en attente d\'envoi…',sending:'Envoi en cours…',offline:'Pas de réseau : les résultats partiront au retour de la connexion.',ok:`Résultats en ligne à jour (${new Date(cs.at).toLocaleTimeString('fr-FR')}).`,error:cs.err,login:'Connectez-vous pour reprendre l\'envoi des résultats.',conflict:'Envoi arrêté : ce tournoi a été modifié depuis un autre appareil.'}[cs.st]||'');
+const kCloud=()=>S.cloud&&S.cloud.on&&!RO?`<span id="kcloud" class="kc ${cs.st==='error'||cs.st==='login'||cs.st==='conflict'?'bad':cs.st==='ok'?'okk':''}" title="${esc(csHtml())}">● en ligne</span>`:'';
 function cloudQueue(){
   if(RO||!S.cloud||!S.cloud.on)return;
+  if(conflict){setCS('conflict');return}
   clearTimeout(pubTimer);setCS('wait');pubTimer=setTimeout(cloudPush,1200);
+}
+const fmtWhen=t=>t?new Date(t).toLocaleString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'?';
+// Encadré affiché quand un autre appareil a modifié le tournoi en ligne
+function vConflict(){
+  if(!conflict||RO)return '';
+  return `<div class="conflict" role="alert"><b>Ce tournoi a été modifié depuis un autre appareil</b>
+    <p>Version en ligne du ${fmtWhen(conflict.majLe)} : ${conflict.joueurs} joueurs, ${conflict.matchs} matchs terminés. Sur cet appareil : ${S.players.length} joueurs, ${S.matches.filter(m=>m.st==='done').length} matchs terminés. Pour ne pas écraser le travail de l'autre appareil, l'envoi est arrêté.</p>
+    <div class="bar"><button class="pri" data-act="cloudpull">Charger la version en ligne</button><button data-act="cloudforce">Envoyer ma version à la place</button></div>
+    <p class="mut">Conseil : une seule personne saisit à la fois. L'autre appareil peut suivre en lecture seule avec le QR code.</p></div>`;
 }
 async function cloudPush(){
   if(!S.cloud||!S.cloud.on)return;
@@ -48,9 +87,16 @@ async function cloudPush(){
     const m=await cloudLib();
     if(!cloudReady)return; // la connexion se rétablit : onUser relancera l'envoi
     if(!cloudUser){setCS('login');return}
+    const f=forceNext,h=pubHash();forceNext=false;
+    if(!f&&h===S.cloud.h){setCS('ok');return} // rien de nouveau à envoyer
     setCS(navigator.onLine===false?'offline':'sending');
-    await m.publish(S.cloud.id,pubData());setCS('ok');
-  }catch(e){setCS('error',e)}
+    const v=await m.publish(S.cloud.id,pubData(),S.cloud.ver||0,f);
+    if(S.cloud){S.cloud.ver=v;S.cloud.h=h;saveLocal()}
+    setCS('ok');
+  }catch(e){
+    if(e&&e.code==='conflict'){conflict=e.remote;setCS('conflict');render();return}
+    setCS('error',e);
+  }
 }
 const newId=()=>{const a=new Uint8Array(12);crypto.getRandomValues(a);return Array.from(a,x=>'abcdefghijkmnpqrstuvwyz23456789'[x%31]).join('')};
 // Réglages des graphiques de l'onglet Classement
@@ -221,7 +267,7 @@ function vCourts(st){
     <button data-act="teamsall" ${np?'':'disabled'}><b>2</b> Valider les équipes${np?` (${np})`:''}</button>
     <button class="pri" data-act="okall" ${nl?'':'disabled'}><b>3</b> Valider les scores saisis</button>
     ${bulk?`<p class="bulk" role="status">${esc(bulk)}</p>`:''}</div>`;
-  return bar+modebar+grid(st)+actions+vQueue(st,q);
+  return (conflict?`<div class="conflict" role="alert"><b>Envoi en ligne arrêté</b> : ce tournoi a été modifié depuis un autre appareil. <button data-act="gosettings">Choisir quelle version garder</button></div>`:'')+bar+modebar+grid(st)+actions+vQueue(st,q);
 }
 // Bandeau du mode spectateur
 function roBar(){
@@ -345,7 +391,7 @@ function vMatches(){
 }
 function vSettings(){
   let dump='';try{dump=JSON.stringify(S)}catch(e){}
-  return `<div class="grid2"><div class="card"><h2>Tournoi</h2>
+  return `<div class="grid2">${vCloud()}<div class="card"><h2>Tournoi</h2>
     <label class="field"><span>Nom</span><input id="tname" value="${esc(S.name)}"></label>
     <label class="field"><span>Nombre de terrains</span><input id="tcourts" type="number" min="1" max="20" value="${S.courts}"></label>
     <label class="field"><span>Points pour gagner un match</span><select id="ttarget">${[11,15,21].map(v=>`<option ${S.target===v?'selected':''}>${v}</option>`).join('')}</select></label>
@@ -353,7 +399,6 @@ function vSettings(){
     <div class="card"><h2>Sauvegarde</h2><p class="mut" style="margin-top:-6px">Tout est enregistré automatiquement dans ce navigateur. Par sécurité, copiez la sauvegarde de temps en temps (dans une note ou un message), ou pour reprendre le tournoi sur un autre appareil.</p>
     <textarea id="dump" readonly>${esc(dump)}</textarea><div class="bar" style="margin-top:10px"><button data-act="copy">Copier la sauvegarde</button><span id="copied" class="mut"></span></div>
     <label class="field"><span>Restaurer une sauvegarde</span><textarea id="imp" placeholder="Collez ici une sauvegarde"></textarea></label><button data-act="import">Restaurer</button> <span id="impmsg" class="mut"></span></div>
-    ${vCloud()}
     <div class="card"><h2>Installer et partager</h2><p class="mut" style="margin-top:-6px">Dans Chrome sur Android : menu ⋮ puis « Ajouter à l'écran d'accueil ». L'appli marche ensuite sans réseau.</p><button data-act="qr">Afficher le QR code de l'appli</button></div>
     <div class="card"><h2>Test et remise à zéro</h2><p class="mut" style="margin-top:-6px">Pour faire un tournoi blanc : remplit des scores au hasard sur tous les matchs en cours.</p>
     <div class="bar"><button data-act="sim">Simuler les scores en cours</button><button class="warn" data-act="reset">Tout effacer</button></div></div></div>`;
@@ -372,7 +417,20 @@ function vCloud(){
       <div class="bar"><button data-act="cloudoff">Suspendre la publication</button><button class="warn" data-act="clouddel">Supprimer les résultats en ligne</button></div>
       <p class="mut" style="font-size:14px">Les prénoms, genres et scores sont visibles par toute personne qui a le lien. Supprimez les résultats en ligne après le tournoi.</p>`
     :`<p class="mut">${S.cloud&&S.cloud.id?'Publication suspendue : les spectateurs voient les derniers résultats envoyés.':'Le tournoi n\'est pas encore publié.'}</p><button class="pri" data-act="cloudon">${S.cloud&&S.cloud.id?'Reprendre la publication':'Publier ce tournoi en ligne'}</button>${S.cloud&&S.cloud.id?' <button class="warn" data-act="clouddel">Supprimer les résultats en ligne</button>':''}`);
-  return `<div class="card"><h2>Résultats en ligne</h2>${body}<p class="mut" id="cloudmsg"></p></div>`;
+  return `<div class="card"><h2>Résultats en ligne</h2>${vConflict()}${cloudNote?`<p class="note ok" role="status">${esc(cloudNote)}</p>`:''}${body}<p class="mut" id="cloudmsg"></p></div>${vOnline()}`;
+}
+// Liste des tournois en ligne, pour reprendre un tournoi sur cet appareil
+function vOnline(){
+  if(RO||!cloudUser)return '';
+  let body;
+  if(onlineList===null)body='<p class="mut">Chargement de la liste…</p>';
+  else if(listErr)body=`<p class="cloudst bad">${esc(listErr)}</p>`;
+  else if(!onlineList.length)body='<p class="mut">Aucun tournoi en ligne pour l\'instant.</p>';
+  else body='<div class="olist">'+onlineList.map(t=>{const here=S.cloud&&S.cloud.id===t.id;
+    return `<div class="orow${here?' here':''}"><div><b>${esc(t.nom)}</b>${here?' <span class="tagc">sur cet appareil</span>':''}<small>Mis à jour le ${fmtWhen(t.majLe)} · ${t.joueurs} joueurs · ${t.matchs} matchs terminés${t.autre?' · envoyé par un autre appareil':''}</small></div>
+      ${here?'':`<button data-act="cloudload" data-v="${esc(t.id)}">Charger sur cet appareil</button>`}</div>`}).join('')+'</div>'+
+    (localEmpty()?'':'<p class="mut note">Charger un tournoi remplace celui de cet appareil'+(S.cloud&&S.cloud.on&&!conflict?' (déjà sauvegardé en ligne)':' : publiez-le d\'abord si vous voulez le garder')+'.</p>');
+  return `<div class="card"><div class="bar" style="margin:0 0 8px"><h2 style="margin:0">Tournois en ligne</h2><span class="sp"></span><button class="ghost" data-act="cloudlist">Actualiser</button></div>${body}</div>`;
 }
 function render(){
   const keep={};document.querySelectorAll('input.sc').forEach(i=>{if(i.value)keep[i.id]=i.value});
@@ -459,13 +517,20 @@ document.addEventListener('click',e=>{
     case 'cloudlogin':{const msg=()=>document.getElementById('cloudmsg');b.disabled=true;
       cloudLib().then(()=>{render();return cloudMod.login()}).then(()=>{render()}).catch(err=>{render();const el=msg();if(el)el.textContent=errMsg(err)});break;}
     case 'cloudlogout':cloudMod&&cloudMod.logout().then(render);break;
-    case 'cloudon':S.cloud={id:(S.cloud&&S.cloud.id)||newId(),on:true};save();render();break;
+    case 'cloudlist':onlineList=null;render();refreshList(false);break;
+    case 'cloudload':{const t=(onlineList||[]).find(x=>x.id===b.dataset.v);if(!t)break;
+      if(localEmpty())loadOnline(t);else twoStep(b,'Confirmer : remplacer ce tournoi ?',()=>loadOnline(t));break;}
+    case 'cloudpull':cloudLib().then(m=>m.fetchOne(S.cloud.id)).then(t=>{if(t)loadOnline(t);else{conflict=null;render()}}).catch(err=>{const el=document.getElementById('cloudmsg');if(el)el.textContent=errMsg(err)});break;
+    case 'cloudforce':twoStep(b,'Confirmer : écraser la version en ligne ?',()=>{conflict=null;forceNext=true;cloudQueue();render()});break;
+    case 'gosettings':tab='settings';render();window.scrollTo(0,0);break;
+    case 'cloudon':S.cloud={id:(S.cloud&&S.cloud.id)||newId(),on:true,ver:(S.cloud&&S.cloud.ver)||0};cloudNote='';save();render();setTimeout(()=>refreshList(false),2500);break;
     case 'cloudoff':S.cloud.on=false;clearTimeout(pubTimer);cs={st:'',at:0,err:''};save();render();break;
     case 'cloudcopy':navigator.clipboard?.writeText(viewUrl()).then(()=>{const el=document.getElementById('cloudmsg');if(el)el.textContent='Lien copié.'},()=>{});break;
     case 'clouddel':twoStep(b,'Confirmer la suppression ?',()=>{const id=S.cloud&&S.cloud.id;clearTimeout(pubTimer);
-      cloudLib().then(m=>m.remove(id)).then(()=>{S.cloud=null;cs={st:'',at:0,err:''};save();render();const el=document.getElementById('cloudmsg');if(el)el.textContent='Résultats en ligne supprimés.'}).catch(err=>{const el=document.getElementById('cloudmsg');if(el)el.textContent=errMsg(err)})});break;
+      cloudLib().then(m=>m.remove(id)).then(()=>{S.cloud=null;conflict=null;cs={st:'',at:0,err:''};cloudNote='Résultats en ligne supprimés. Le tournoi reste sur cet appareil.';save();refreshList(false);render()}).catch(err=>{const el=document.getElementById('cloudmsg');if(el)el.textContent=errMsg(err)})});break;
     case 'takeover':twoStep(b,'Confirmer : remplacer le tournoi de cet appareil ?',()=>{
-      if(!roData)return;const o=Object.assign(fresh(),roData,{cloud:{id:VIEW_ID,on:true}});
+      if(!roData)return;const o=Object.assign(fresh(),roData,{cloud:{id:VIEW_ID,on:true,ver:roVer}});
+      {const keep=S;S=o;o.cloud.h=pubHash();S=keep}
       try{localStorage.setItem(KEY,JSON.stringify(o))}catch(err){}
       location.replace(location.pathname)});break;
     case 'gomatch':{tab='matches';mFilter='';matchFocus=id;editing=null;render();
@@ -503,8 +568,8 @@ document.addEventListener('toggle',e=>{if(e.target.classList&&e.target.classList
 // Démarrage des résultats en ligne
 if(RO){
   document.body.classList.add('ro');
-  cloudLib().then(m=>m.watch(VIEW_ID,(data,at)=>{
-    if(!data){roState='gone';roData=null}else{roData=data;S=Object.assign(fresh(),data,{auto:false});roState='ok';roAt=at}
+  cloudLib().then(m=>m.watch(VIEW_ID,(data,at,ver)=>{
+    if(!data){roState='gone';roData=null}else{roData=data;roVer=ver||0;S=Object.assign(fresh(),data,{auto:false});roState='ok';roAt=at}
     render();
   },e=>{roState='error';roErr=errMsg(e);render()})).catch(e=>{roState='error';roErr=errMsg(e);render()});
 }else if(S.cloud&&S.cloud.on){cloudLib().catch(e=>setCS('error',e))}

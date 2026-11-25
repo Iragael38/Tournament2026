@@ -185,3 +185,13 @@ button.tile:hover{border-color:var(--mark)}
 .mrow .ed{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-left:52px}
 .mrow .ed .warn{margin-left:auto}
 @media(max-width:600px){.mrow .ed{padding-left:0}}
+/* Tournois en ligne et conflits entre appareils */
+.conflict{background:light-dark(#fff4ec,#2a1a10);border:1px solid var(--neg);border-left:5px solid var(--neg);border-radius:10px;padding:12px 14px;margin-bottom:16px}
+.conflict p{margin:6px 0}.conflict .bar{margin:8px 0 4px}
+.note.ok{background:light-dark(#eef5ec,#13261a);border-radius:8px;padding:8px 12px;margin:0 0 12px;color:var(--ink)}
+.cloudst.bad{color:var(--neg)}
+.olist{display:grid;gap:8px}
+.orow{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;border:1px solid var(--bd);border-radius:10px;padding:10px 12px}
+.orow.here{border-color:var(--mark)}
+.orow small{display:block;color:var(--mut);font-size:13px;margin-top:2px}
+.tagc{font-size:12px;font-weight:600;background:var(--mark);color:var(--bg);border-radius:99px;padding:2px 8px;white-space:nowrap}
