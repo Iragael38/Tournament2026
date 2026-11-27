@@ -42,7 +42,8 @@ Un organisateur peut publier le tournoi : chacun scanne alors un QR code et suit
 
 - **Publier** : onglet Réglages › Résultats en ligne › « Se connecter avec Google » puis « Publier ce tournoi en ligne ». Chaque validation (équipes, scores, joueurs) part ensuite automatiquement ; sans réseau, l'envoi se fait au retour de la connexion. Un point « ● en ligne » s'affiche dans l'en-tête.
 - **Partager** : bouton « QR code spectateurs » (Réglages ou page Terrains). Le lien a la forme `…/?voir=<identifiant>`.
-- **Changer d'appareil** : sur la page spectateur, un organisateur connecté peut « Reprendre la saisie sur cet appareil ».
+- **Changer d'appareil** : sur un autre téléphone, Réglages › Résultats en ligne › « Se connecter avec Google ». Si l'appareil est vide, le tournoi en ligne le plus récent est chargé automatiquement ; sinon, la carte « Tournois en ligne » liste les tournois avec un bouton « Charger sur cet appareil ». On peut aussi, depuis la page spectateur, « Reprendre la saisie sur cet appareil ».
+- **Deux appareils en même temps** : chaque envoi porte un numéro de version. Si un autre appareil a modifié le tournoi entre-temps, l'envoi s'arrête (point rouge, encadré orange) et l'organisateur choisit : « Charger la version en ligne » ou « Envoyer ma version à la place ». Rien n'est écrasé sans ce choix. Un appareil n'envoie que s'il a réellement modifié le tournoi.
 - **Après le tournoi** : « Supprimer les résultats en ligne ».
 - Sont publiés : prénoms, genres, matchs et scores. Les niveaux ne sont pas publiés.
 
@@ -50,7 +51,7 @@ Un organisateur peut publier le tournoi : chacun scanne alors un QR code et suit
 
 Projet Firebase `badadonf-tournoi`, base Firestore et connexion Google déjà créées. Il reste :
 
-1. **Règles de sécurité** : Firestore › onglet *Règles* : remplacer le contenu par celui de [`firestore.rules`](firestore.rules), puis *Publier*.
+1. **Règles de sécurité** : Firestore › onglet *Règles* : remplacer le contenu par celui de [`firestore.rules`](firestore.rules), puis *Publier*. À refaire à chaque modification de ce fichier.
 2. **Liste des organisateurs** : Firestore › onglet *Données* › *Commencer une collection* :
    - ID de collection : `config`
    - ID du document : `organisateurs`

@@ -3,7 +3,7 @@ rules_version = '2';
 // Règles de sécurité de la base Firestore du projet badadonf-tournoi.
 // À coller dans la console Firebase : Firestore › onglet Règles (Rules) › Publier.
 //
-// - Un tournoi se lit par son identifiant (celui du QR code). On ne peut pas lister les tournois.
+// - Un tournoi se lit par son identifiant (celui du QR code). Seuls les organisateurs peuvent lister les tournois.
 // - Seuls les organisateurs peuvent publier, modifier ou supprimer un tournoi.
 // - La liste des organisateurs est dans le document config/organisateurs (champ « emails », un tableau).
 //   Pour ajouter quelqu'un, on modifie ce document dans la console : inutile de toucher à ces règles.
@@ -20,11 +20,13 @@ service cloud.firestore {
 
     match /tournois/{id} {
       allow get: if true;
-      allow list: if false;
+      allow list: if estOrganisateur();
       allow create, update: if estOrganisateur()
-        && request.resource.data.keys().hasOnly(['nom', 'majLe', 'donnees'])
+        && request.resource.data.keys().hasOnly(['nom', 'majLe', 'donnees', 'version', 'appareil'])
         && request.resource.data.donnees is string
-        && request.resource.data.donnees.size() < 900000;
+        && request.resource.data.donnees.size() < 900000
+        && (!('version' in request.resource.data) || request.resource.data.version is int)
+        && (!('appareil' in request.resource.data) || request.resource.data.appareil is string);
       allow delete: if estOrganisateur();
     }
 
